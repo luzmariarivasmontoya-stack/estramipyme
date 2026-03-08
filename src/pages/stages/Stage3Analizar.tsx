@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { AlertCircle, Compass } from 'lucide-react'
 import { useCompany } from '@/hooks/useCompany'
+import { useAutosave } from '@/hooks/useAutosave'
 import { WizardContainer } from '@/components/wizard/WizardContainer'
 import { Card } from '@/components/common/Card'
 import { MegatrendsAnalysis } from '@/components/stage3/MegatrendsAnalysis'
@@ -16,6 +17,7 @@ import type {
 
 export default function Stage3Analizar() {
   const { currentCompany, updateStage } = useCompany()
+  const { triggerSave } = useAutosave()
 
   if (!currentCompany) {
     return (
@@ -45,6 +47,7 @@ export default function Stage3Analizar() {
       ...stageData,
       megatrends,
     })
+    triggerSave()
   }
 
   const handleSynthesisChange = (
@@ -55,6 +58,7 @@ export default function Stage3Analizar() {
       ...stageData,
       [field]: value,
     })
+    triggerSave()
   }
 
   const handleIndustryChange = (industry: IndustryAnalysisType) => {
@@ -62,6 +66,7 @@ export default function Stage3Analizar() {
       ...stageData,
       industry,
     })
+    triggerSave()
   }
 
   const handleClockChange = (strategicClock: StrategicClockPosition) => {
@@ -69,6 +74,7 @@ export default function Stage3Analizar() {
       ...stageData,
       strategicClock,
     })
+    triggerSave()
   }
 
   return (

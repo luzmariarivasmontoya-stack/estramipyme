@@ -2,7 +2,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Compass, Users, BarChart3, Puzzle, Lightbulb, Flag,
-  LayoutDashboard, ClipboardList, FileText, ChevronLeft, ChevronRight, Lock, Sparkles,
+  LayoutDashboard, ClipboardList, FileText, ChevronLeft, ChevronRight, Lock, Sparkles, BookOpen,
 } from 'lucide-react'
 import { useContext } from 'react'
 import { AppContext } from '@/context/AppContext'
@@ -33,6 +33,7 @@ export function Sidebar() {
       locked: !isStageAccessible(s.number),
       stageNumber: s.number,
     })),
+    { path: '/app/casos', label: 'Casos', icon: BookOpen, locked: !isPro },
     { path: '/app/preguntas', label: 'Cuestionario', icon: ClipboardList },
     { path: '/app/reporte', label: 'Reporte', icon: FileText },
   ]

@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { LogOut, User, Crown } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useFreemium } from '@/hooks/useFreemium'
+import { AutosaveIndicator } from './AutosaveIndicator'
 
 export function Navigation() {
   const navigate = useNavigate()
@@ -17,6 +18,7 @@ export function Navigation() {
     <header className="bg-white border-b border-neutral-lighter px-6 py-3 flex items-center justify-between sticky top-0 z-10">
       <div />
       <div className="flex items-center gap-4">
+        <AutosaveIndicator />
         {isPro && (
           <span className="flex items-center gap-1 text-xs bg-accent/10 text-accent px-2 py-1 rounded-full font-medium">
             <Crown size={12} />

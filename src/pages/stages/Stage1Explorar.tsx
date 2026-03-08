@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Compass, AlertCircle } from 'lucide-react'
 import { useCompany } from '@/hooks/useCompany'
+import { useAutosave } from '@/hooks/useAutosave'
 import { WizardContainer } from '@/components/wizard/WizardContainer'
 import { Card } from '@/components/common/Card'
 import { BusinessProfileForm } from '@/components/stage1/BusinessProfileForm'
@@ -10,6 +11,7 @@ import type { BusinessProfile, Trend, Stage1Data } from '@/types/stages'
 
 export default function Stage1Explorar() {
   const { currentCompany, updateStage } = useCompany()
+  const { triggerSave } = useAutosave()
 
   if (!currentCompany) {
     return (
@@ -39,6 +41,7 @@ export default function Stage1Explorar() {
       ...stageData,
       businessProfile: updated,
     })
+    triggerSave()
   }
 
   const handleNotesChange = (notes: Record<string, string>) => {
@@ -46,6 +49,7 @@ export default function Stage1Explorar() {
       ...stageData,
       investigatorNotes: notes,
     })
+    triggerSave()
   }
 
   const handleTrendsChange = (trends: Trend[]) => {
@@ -53,6 +57,7 @@ export default function Stage1Explorar() {
       ...stageData,
       trends,
     })
+    triggerSave()
   }
 
   return (

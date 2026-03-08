@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { AlertCircle, Puzzle } from 'lucide-react'
 import { useCompany } from '@/hooks/useCompany'
+import { useAutosave } from '@/hooks/useAutosave'
 import { WizardContainer } from '@/components/wizard/WizardContainer'
 import { Card } from '@/components/common/Card'
 import { FreemiumGate } from '@/components/common/FreemiumGate'
@@ -19,6 +20,7 @@ import type {
 
 export default function Stage4Integrar() {
   const { currentCompany, updateStage } = useCompany()
+  const { triggerSave } = useAutosave()
 
   if (!currentCompany) {
     return (
@@ -45,30 +47,37 @@ export default function Stage4Integrar() {
 
   const handleGoldenCircleChange = (data: GoldenCircleData) => {
     updateStage('stage4', { ...stageData, goldenCircle: data })
+    triggerSave()
   }
 
   const handleVRINResourcesChange = (resources: VRINResource[]) => {
     updateStage('stage4', { ...stageData, vrinResources: resources })
+    triggerSave()
   }
 
   const handleVRINPrincipalResourceChange = (value: string) => {
     updateStage('stage4', { ...stageData, vrinPrincipalResource: value })
+    triggerSave()
   }
 
   const handleVRINAnalysisChange = (analysis: VRINAnalysis | null) => {
     updateStage('stage4', { ...stageData, vrinAnalysis: analysis })
+    triggerSave()
   }
 
   const handleRadarChange = (data: RadarData[]) => {
     updateStage('stage4', { ...stageData, radar: data })
+    triggerSave()
   }
 
   const handleChallengeChange = (value: string) => {
     updateStage('stage4', { ...stageData, strategicChallenge: value })
+    triggerSave()
   }
 
   const handleConclusionsChange = (conclusions: ConclusionEntry[]) => {
     updateStage('stage4', { ...stageData, conclusions: conclusions })
+    triggerSave()
   }
 
   return (

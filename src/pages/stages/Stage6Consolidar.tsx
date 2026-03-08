@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { AlertCircle, Flag, FileText } from 'lucide-react'
 import { useCompany } from '@/hooks/useCompany'
+import { useAutosave } from '@/hooks/useAutosave'
 import { WizardContainer } from '@/components/wizard/WizardContainer'
 import { Card } from '@/components/common/Card'
 import { Button } from '@/components/common/Button'
@@ -10,6 +11,7 @@ import type { RoadmapItem, Stage6Data } from '@/types/stages'
 
 export default function Stage6Consolidar() {
   const { currentCompany, updateStage } = useCompany()
+  const { triggerSave } = useAutosave()
 
   if (!currentCompany) {
     return (
@@ -36,10 +38,12 @@ export default function Stage6Consolidar() {
 
   const handleRoadmapChange = (items: RoadmapItem[]) => {
     updateStage('stage6', { ...stageData, roadmap: items })
+    triggerSave()
   }
 
   const handleNotesChange = (value: string) => {
     updateStage('stage6', { ...stageData, finalNotes: value })
+    triggerSave()
   }
 
   return (

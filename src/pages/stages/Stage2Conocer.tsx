@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Users, AlertCircle } from 'lucide-react'
 import { useCompany } from '@/hooks/useCompany'
+import { useAutosave } from '@/hooks/useAutosave'
 import { WizardContainer } from '@/components/wizard/WizardContainer'
 import { Card } from '@/components/common/Card'
 import { ConversationRegistry } from '@/components/stage2/ConversationRegistry'
@@ -9,6 +10,7 @@ import type { ConversationEntry, StickyNote, Stage2Data } from '@/types/stages'
 
 export default function Stage2Conocer() {
   const { currentCompany, updateStage } = useCompany()
+  const { triggerSave } = useAutosave()
 
   if (!currentCompany) {
     return (
@@ -39,6 +41,7 @@ export default function Stage2Conocer() {
       ...stageData,
       conversations: updated,
     })
+    triggerSave()
   }
 
   const handleTestimonialsChange = (updated: StickyNote[]) => {
@@ -46,6 +49,7 @@ export default function Stage2Conocer() {
       ...stageData,
       testimonials: updated,
     })
+    triggerSave()
   }
 
   return (

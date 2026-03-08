@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { AlertCircle, Lightbulb } from 'lucide-react'
 import { useCompany } from '@/hooks/useCompany'
+import { useAutosave } from '@/hooks/useAutosave'
 import { WizardContainer } from '@/components/wizard/WizardContainer'
 import { Card } from '@/components/common/Card'
 import { FreemiumGate } from '@/components/common/FreemiumGate'
@@ -13,6 +14,7 @@ import type { CanvasNote, AdLibData, WorkshopData, Stage5Data } from '@/types/st
 
 export default function Stage5Facilitar() {
   const { currentCompany, updateStage } = useCompany()
+  const { triggerSave } = useAutosave()
 
   if (!currentCompany) {
     return (
@@ -39,26 +41,32 @@ export default function Stage5Facilitar() {
 
   const handleValuePropChange = (notes: CanvasNote[]) => {
     updateStage('stage5', { ...stageData, valuePropCanvas: notes })
+    triggerSave()
   }
 
   const handleAdLibChange = (data: AdLibData) => {
     updateStage('stage5', { ...stageData, adLib: data })
+    triggerSave()
   }
 
   const handleBMCChange = (notes: CanvasNote[]) => {
     updateStage('stage5', { ...stageData, businessModelCanvas: notes })
+    triggerSave()
   }
 
   const handleCoherenceNotesChange = (notes: string) => {
     updateStage('stage5', { ...stageData, coherenceNotes: notes })
+    triggerSave()
   }
 
   const handleCoherenceScoreChange = (score: 'verde' | 'amarillo' | 'rojo' | null) => {
     updateStage('stage5', { ...stageData, coherenceScore: score })
+    triggerSave()
   }
 
   const handleWorkshopChange = (data: WorkshopData) => {
     updateStage('stage5', { ...stageData, workshop: data })
+    triggerSave()
   }
 
   return (

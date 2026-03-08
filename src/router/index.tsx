@@ -15,6 +15,8 @@ import Stage5Facilitar from '@/pages/stages/Stage5Facilitar'
 import Stage6Consolidar from '@/pages/stages/Stage6Consolidar'
 import Questionnaire from '@/pages/Questionnaire'
 import Report from '@/pages/Report'
+import CaseStudies from '@/pages/CaseStudies'
+import CaseStudyDetail from '@/pages/CaseStudyDetail'
 
 export function AppRouter() {
   return (
@@ -39,6 +41,8 @@ export function AppRouter() {
         <Route path="etapa/4" element={<Stage4Integrar />} />
         <Route path="etapa/5" element={<Stage5Facilitar />} />
         <Route path="etapa/6" element={<Stage6Consolidar />} />
+        <Route path="casos" element={<CaseStudies />} />
+        <Route path="caso/:caseId" element={<CaseStudyDetail />} />
         <Route path="preguntas" element={<Questionnaire />} />
         <Route path="reporte" element={<Report />} />
       </Route>
