@@ -1,6 +1,6 @@
 import { forwardRef } from 'react'
 import { useCompany } from '@/hooks/useCompany'
-import { STAGES, RADAR_CATEGORIES } from '@/utils/constants'
+import { STAGES } from '@/utils/constants'
 
 /* ------------------------------------------------------------------ */
 /*  Strategic Clock segment labels (mirrored from StrategicClock.tsx)  */

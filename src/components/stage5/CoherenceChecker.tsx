@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import React, { useMemo } from 'react'
 import {
   CheckCircle,
   AlertTriangle,
@@ -44,7 +44,7 @@ function findCommonWords(textA: string, textB: string): string[] {
   return Array.from(common)
 }
 
-function highlightCommon(text: string, commonWords: string[]): JSX.Element[] {
+function highlightCommon(text: string, commonWords: string[]): React.ReactElement[] {
   if (!text || commonWords.length === 0) return [<span key="0">{text}</span>]
   const lowerCommon = new Set(commonWords.map((w) => w.toLowerCase()))
   const words = text.split(/(\s+)/)

@@ -63,7 +63,7 @@ function DraggableStickyNote({
 
 export function StickyNotesBoard({ notes, onChange, readOnly = false }: StickyNotesBoardProps) {
   const [showColorPicker, setShowColorPicker] = useState(false)
-  const [selectedColor, setSelectedColor] = useState(STICKY_NOTE_COLORS[0])
+  const [selectedColor, setSelectedColor] = useState<string>(STICKY_NOTE_COLORS[0])
   const boardRef = useRef<HTMLDivElement>(null)
 
   const sensors = useSensors(

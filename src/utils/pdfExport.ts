@@ -19,8 +19,6 @@ export async function generatePDF(
     backgroundColor: '#FFFFFF',
   })
 
-  const imgData = canvas.toDataURL('image/png')
-
   // A4 dimensions in mm
   const pageWidth = 210
   const pageHeight = 297
@@ -73,39 +71,19 @@ export async function generatePDF(
 
     // Add watermark for free-plan users
     if (!isPro) {
-      pdf.saveGraphicsState()
-      // Semi-transparent gray watermark
       pdf.setTextColor(180, 180, 180)
       pdf.setFontSize(28)
 
-      // Rotate text diagonally across the page
+      // Place diagonal watermark text
       const centerX = pageWidth / 2
       const centerY = pageHeight / 2
 
-      // Use text rotation via translation and rotation
-      pdf.internal.write('q') // save state
-      const angle = -45 * (Math.PI / 180)
-      const cos = Math.cos(angle)
-      const sin = Math.sin(angle)
-
-      // Convert mm to PDF units (points at 72 DPI: 1mm = 2.835pt)
-      const pxX = centerX * 2.835
-      const pxY = centerY * 2.835
-
-      pdf.internal.write(
-        `${cos.toFixed(4)} ${sin.toFixed(4)} ${(-sin).toFixed(4)} ${cos.toFixed(4)} ${pxX.toFixed(2)} ${pxY.toFixed(2)} cm`
-      )
-
-      // Draw text at origin (since we translated to center)
       pdf.text(
         'VERSION GRATUITA - Estramipyme Digital',
-        0,
-        0,
-        { align: 'center' }
+        centerX,
+        centerY,
+        { align: 'center', angle: 45 }
       )
-
-      pdf.internal.write('Q') // restore state
-      pdf.restoreGraphicsState()
     }
   }
 

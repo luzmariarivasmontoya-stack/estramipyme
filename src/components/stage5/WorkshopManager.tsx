@@ -41,11 +41,6 @@ export function WorkshopManager({ data, onChange }: WorkshopManagerProps) {
   const [newAgendaItem, setNewAgendaItem] = useState('')
   const [newParticipant, setNewParticipant] = useState('')
 
-  // Initialize agenda with defaults if empty
-  const agenda = data.agenda.length > 0 ? data.agenda : DEFAULT_AGENDA
-  const checklist =
-    Object.keys(data.checklist).length > 0 ? data.checklist : DEFAULT_CHECKLIST
-
   // Date
   const handleDateChange = (value: string) => {
     onChange({ ...data, date: value })
@@ -54,7 +49,7 @@ export function WorkshopManager({ data, onChange }: WorkshopManagerProps) {
   // Agenda
   const handleAddAgendaItem = () => {
     if (!newAgendaItem.trim()) return
-    const updatedAgenda = agenda === DEFAULT_AGENDA && data.agenda.length === 0
+    const updatedAgenda = data.agenda.length === 0
       ? [...DEFAULT_AGENDA, newAgendaItem.trim()]
       : [...data.agenda, newAgendaItem.trim()]
     onChange({ ...data, agenda: updatedAgenda })
