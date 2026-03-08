@@ -16,22 +16,7 @@ export const QUESTIONNAIRE_CATEGORIES = [
 export type QuestionnaireCategory = (typeof QUESTIONNAIRE_CATEGORIES)[number]
 
 export const questions: QuestionItem[] = [
-  // ── Identidad Estratégica (5 preguntas) ─────────────────────────
-  {
-    id: 'ie-1',
-    text: 'La misión de mi empresa está claramente definida y es comprendida por todos los miembros del equipo.',
-    category: 'Identidad Estratégica',
-  },
-  {
-    id: 'ie-2',
-    text: 'La visión de futuro de mi empresa inspira y guía las decisiones estratégicas del día a día.',
-    category: 'Identidad Estratégica',
-  },
-  {
-    id: 'ie-3',
-    text: 'Los valores fundamentales de mi empresa se reflejan consistentemente en nuestras acciones y cultura organizacional.',
-    category: 'Identidad Estratégica',
-  },
+  // ── Identidad Estratégica (2 preguntas) ─────────────────────────
   {
     id: 'ie-4',
     text: 'El propósito de mi empresa va más allá de generar ganancias y aporta valor a la sociedad.',
