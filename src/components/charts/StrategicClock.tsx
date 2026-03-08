@@ -1,418 +1,645 @@
-import { useState } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import type { StrategicClockPosition } from '@/types/stages'
 
+/* ── Props ─────────────────────────────────────────── */
 interface StrategicClockProps {
   position: StrategicClockPosition
   onChange: (position: StrategicClockPosition) => void
   readOnly?: boolean
 }
 
-/*
- * Bowman's Strategic Clock — Cartesian Plane Implementation
- * X axis: Precio (low left, high right)
- * Y axis: Valor Percibido (low bottom, high top)
- * 8 position circles placed on the plane
- */
-
-interface ClockPosition {
+/* ── Strategy Definitions ──────────────────────────── */
+interface Strategy {
   id: number
   name: string
-  cx: number
-  cy: number
-  failure: boolean
+  lines: string[]
+  endX: number
+  endY: number
+  labelX: number
+  labelY: number
+  labelAnchor: 'start' | 'middle' | 'end'
   description: string
 }
 
-const POSITIONS: ClockPosition[] = [
+const SVG_W = 480
+const SVG_H = 440
+const CX = 220
+const CY = 210
+const SNAP_R = 45
+const STAR_OUTER = 12
+const STAR_INNER = 5
+
+/**
+ * Five competitive strategies from Bowman's Strategic Clock
+ * (Faulkner & Bowman, 1995 — Estramipyme, EAFIT 2023, Figura 6)
+ *
+ * Arranged as arrows from center:
+ *   1 → lower-left  (low price, low value)
+ *   2 → left         (low price, moderate value)
+ *   3 → upper-left   (moderate price, high value)
+ *   4 → up           (moderate price, very high value)
+ *   5 → upper-right  (premium price, premium value)
+ */
+const STRATEGIES: Strategy[] = [
   {
     id: 1,
-    name: 'Sin frills',
-    cx: 110,
-    cy: 310,
-    failure: false,
-    description: 'Precio bajo, bajo valor percibido. Productos basicos sin diferenciacion.',
+    name: 'Bajo precio / Valor añadido',
+    lines: ['Bajo precio /', 'Valor añadido'],
+    endX: 120,
+    endY: 315,
+    labelX: 50,
+    labelY: 340,
+    labelAnchor: 'start',
+    description:
+      'Precio bajo con valor básico. Productos sin diferenciación significativa.',
   },
   {
     id: 2,
-    name: 'Precio bajo',
-    cx: 90,
-    cy: 220,
-    failure: false,
-    description: 'Precio bajo con valor aceptable. Estrategia tipo lider en costos.',
+    name: 'Bajo precio',
+    lines: ['Bajo precio'],
+    endX: 75,
+    endY: 200,
+    labelX: 32,
+    labelY: 196,
+    labelAnchor: 'start',
+    description:
+      'Competir con precios más bajos que los competidores, manteniendo un valor aceptable.',
   },
   {
     id: 3,
-    name: 'Hibrida',
-    cx: 130,
-    cy: 140,
-    failure: false,
-    description: 'Combinacion de precio bajo y buen valor percibido. Diferenciacion a precios competitivos.',
+    name: 'Híbrida',
+    lines: ['Híbrida'],
+    endX: 120,
+    endY: 100,
+    labelX: 82,
+    labelY: 85,
+    labelAnchor: 'start',
+    description:
+      'Combinar precio competitivo con buena diferenciación. Lo mejor de ambos mundos.',
   },
   {
     id: 4,
-    name: 'Diferenciacion',
-    cx: 210,
-    cy: 90,
-    failure: false,
-    description: 'Alto valor percibido a precio razonable. Destaca por calidad, marca o innovacion.',
+    name: 'Diferenciación',
+    lines: ['Diferenciación'],
+    endX: 220,
+    endY: 55,
+    labelX: 220,
+    labelY: 38,
+    labelAnchor: 'middle',
+    description:
+      'Ofrecer alto valor percibido a precio razonable. Destacar por calidad, marca o innovación.',
   },
   {
     id: 5,
-    name: 'Dif. segmentada',
-    cx: 310,
-    cy: 90,
-    failure: false,
-    description: 'Maximo valor percibido, precio premium. Productos exclusivos para nichos especificos.',
-  },
-  {
-    id: 6,
-    name: 'Mayor precio / valor std',
-    cx: 340,
-    cy: 180,
-    failure: true,
-    description: 'Precio alto sin valor diferenciado. Riesgo de perder clientes frente a alternativas.',
-  },
-  {
-    id: 7,
-    name: 'Mayor precio / bajo valor',
-    cx: 320,
-    cy: 280,
-    failure: true,
-    description: 'Precio elevado con bajo valor percibido. Posicion insostenible.',
-  },
-  {
-    id: 8,
-    name: 'Bajo valor / precio std',
-    cx: 220,
-    cy: 320,
-    failure: true,
-    description: 'Valor bajo a precio estandar. Desventaja competitiva, riesgo de perdida de mercado.',
+    name: 'Diferenciación segmentada',
+    lines: ['Diferenciación', 'segmentada'],
+    endX: 335,
+    endY: 100,
+    labelX: 360,
+    labelY: 90,
+    labelAnchor: 'start',
+    description:
+      'Máximo valor percibido para un nicho específico, a precio premium.',
   },
 ]
 
-/** Build SVG path for the dashed arc connecting viable strategies (1→2→3→4→5) */
-function viableStrategiesPath(): string {
-  const viablePositions = POSITIONS.filter((p) => p.id >= 1 && p.id <= 5).sort(
-    (a, b) => a.id - b.id
-  )
-  if (viablePositions.length < 2) return ''
+/* ── SVG Helpers ───────────────────────────────────── */
 
-  const points = viablePositions.map((p) => ({ x: p.cx, y: p.cy }))
-
-  // Build a smooth quadratic bezier curve through the points
-  let d = `M ${points[0].x} ${points[0].y}`
-  for (let i = 1; i < points.length; i++) {
-    const prev = points[i - 1]
-    const curr = points[i]
-    const midX = (prev.x + curr.x) / 2
-    const midY = (prev.y + curr.y) / 2
-    d += ` Q ${prev.x} ${prev.y} ${midX} ${midY}`
+/** 5-pointed star polygon (points string) */
+function starPts(
+  cx: number,
+  cy: number,
+  outer = STAR_OUTER,
+  inner = STAR_INNER,
+): string {
+  const pts: string[] = []
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 === 0 ? outer : inner
+    const a = (i * Math.PI) / 5 - Math.PI / 2
+    pts.push(`${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`)
   }
-  // Final segment to last point
-  const last = points[points.length - 1]
-  const secondLast = points[points.length - 2]
-  d += ` Q ${secondLast.x} ${secondLast.y} ${last.x} ${last.y}`
-
-  return d
+  return pts.join(' ')
 }
 
-const CIRCLE_RADIUS = 18
+/** Arrowhead triangle (points string) */
+function arrowHead(
+  fx: number,
+  fy: number,
+  tx: number,
+  ty: number,
+  size = 10,
+): string {
+  const a = Math.atan2(ty - fy, tx - fx)
+  const x1 = tx - size * Math.cos(a - Math.PI / 6)
+  const y1 = ty - size * Math.sin(a - Math.PI / 6)
+  const x2 = tx - size * Math.cos(a + Math.PI / 6)
+  const y2 = ty - size * Math.sin(a + Math.PI / 6)
+  return `${tx},${ty} ${x1},${y1} ${x2},${y2}`
+}
+
+/* ── Component ─────────────────────────────────────── */
 
 export function StrategicClock({
   position,
   onChange,
   readOnly = false,
 }: StrategicClockProps) {
-  const [hoveredId, setHoveredId] = useState<number | null>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
+  const isDragRef = useRef(false)
+  const onChangeRef = useRef(onChange)
+  const posRef = useRef(position)
 
-  const selectedId = position.segment
+  const [star, setStar] = useState(() => {
+    const s = STRATEGIES.find((st) => st.id === position.segment)
+    return s ? { x: s.endX, y: s.endY } : { x: CX, y: CY }
+  })
+  const starRef = useRef(star)
+  const [dragging, setDragging] = useState(false)
+  const [hovered, setHovered] = useState<number | null>(null)
 
-  const handleSelectPosition = (id: number) => {
-    if (readOnly) return
-    onChange({
-      ...position,
-      segment: id,
-      angle: id * 45, // Keep angle consistent with segment
-    })
-  }
+  // Keep refs in sync
+  useEffect(() => {
+    onChangeRef.current = onChange
+  }, [onChange])
+  useEffect(() => {
+    posRef.current = position
+  }, [position])
+  useEffect(() => {
+    starRef.current = star
+  }, [star])
 
-  const selectedPosition = POSITIONS.find((p) => p.id === selectedId)
+  // Sync star when segment changes externally
+  useEffect(() => {
+    if (isDragRef.current) return
+    const s = STRATEGIES.find((st) => st.id === position.segment)
+    if (s) setStar({ x: s.endX, y: s.endY })
+    else if (position.segment === 0) setStar({ x: CX, y: CY })
+  }, [position.segment])
 
+  /* ── Coordinate conversion ───────────────────────── */
+  const toSVG = useCallback((cx: number, cy: number) => {
+    const el = svgRef.current
+    if (!el) return { x: CX, y: CY }
+    const r = el.getBoundingClientRect()
+    return {
+      x: Math.max(20, Math.min(SVG_W - 20, ((cx - r.left) / r.width) * SVG_W)),
+      y: Math.max(20, Math.min(SVG_H - 20, ((cy - r.top) / r.height) * SVG_H)),
+    }
+  }, [])
+
+  /* ── Find snap target ────────────────────────────── */
+  const findSnap = useCallback((x: number, y: number): Strategy | null => {
+    let best: Strategy | null = null
+    let bestD = SNAP_R
+    for (const s of STRATEGIES) {
+      const d = Math.hypot(x - s.endX, y - s.endY)
+      if (d < bestD) {
+        bestD = d
+        best = s
+      }
+    }
+    return best
+  }, [])
+
+  /* ── Window-level drag listeners ─────────────────── */
+  useEffect(() => {
+    const move = (cx: number, cy: number) => {
+      if (!isDragRef.current) return
+      const p = toSVG(cx, cy)
+      starRef.current = p
+      setStar(p)
+    }
+
+    const end = () => {
+      if (!isDragRef.current) return
+      isDragRef.current = false
+      setDragging(false)
+      const p = starRef.current
+      const s = findSnap(p.x, p.y)
+      if (s) {
+        const np = { x: s.endX, y: s.endY }
+        starRef.current = np
+        setStar(np)
+        onChangeRef.current({
+          ...posRef.current,
+          segment: s.id,
+          angle: s.id * 45,
+        })
+      } else {
+        // Reset to previous strategy or center
+        const prev = STRATEGIES.find((st) => st.id === posRef.current.segment)
+        const np = prev ? { x: prev.endX, y: prev.endY } : { x: CX, y: CY }
+        starRef.current = np
+        setStar(np)
+      }
+    }
+
+    const onMM = (e: MouseEvent) => move(e.clientX, e.clientY)
+    const onTM = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        e.preventDefault()
+        move(e.touches[0].clientX, e.touches[0].clientY)
+      }
+    }
+    const onMU = () => end()
+    const onTE = () => end()
+
+    window.addEventListener('mousemove', onMM)
+    window.addEventListener('mouseup', onMU)
+    window.addEventListener('touchmove', onTM, { passive: false })
+    window.addEventListener('touchend', onTE)
+    return () => {
+      window.removeEventListener('mousemove', onMM)
+      window.removeEventListener('mouseup', onMU)
+      window.removeEventListener('touchmove', onTM)
+      window.removeEventListener('touchend', onTE)
+    }
+  }, [toSVG, findSnap])
+
+  /* ── Start drag ──────────────────────────────────── */
+  const onStarDown = useCallback(
+    (e: React.MouseEvent | React.TouchEvent) => {
+      if (readOnly) return
+      e.preventDefault()
+      e.stopPropagation()
+      isDragRef.current = true
+      setDragging(true)
+    },
+    [readOnly],
+  )
+
+  /* ── Click arrow to select ───────────────────────── */
+  const clickStrategy = useCallback(
+    (id: number) => {
+      if (readOnly) return
+      const s = STRATEGIES.find((st) => st.id === id)
+      if (!s) return
+      setStar({ x: s.endX, y: s.endY })
+      onChange({ ...position, segment: id, angle: id * 45 })
+    },
+    [readOnly, onChange, position],
+  )
+
+  const selected = STRATEGIES.find((s) => s.id === position.segment)
+  const target = STRATEGIES.find((s) => s.id === position.targetPosition)
+  const snapPreview = dragging ? findSnap(star.x, star.y) : null
+
+  /* ── Render ──────────────────────────────────────── */
   return (
     <div className="flex flex-col gap-6">
-      {/* Main layout: SVG + Legend side by side on desktop */}
-      <div className="flex flex-col lg:flex-row gap-6 items-start">
-        {/* SVG Cartesian Plane */}
-        <div className="w-full max-w-[420px] flex-shrink-0">
-          <svg
-            viewBox="0 0 400 400"
-            className="w-full select-none"
-            style={{ touchAction: 'none' }}
+      {/* ── SVG Cartesian Plane ── */}
+      <div className="w-full max-w-[520px] mx-auto">
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+          className="w-full select-none"
+          style={{ touchAction: 'none' }}
+          role="img"
+          aria-label="Reloj Estratégico de Bowman — plano cartesiano con 5 estrategias"
+        >
+          {/* Background */}
+          <rect width={SVG_W} height={SVG_H} fill="#FAFAF7" rx="8" />
+
+          {/* Subtle quadrant shading */}
+          <rect
+            x="30"
+            y="30"
+            width={CX - 30}
+            height={CY - 30}
+            fill="#f0fdf4"
+            opacity="0.25"
+            rx="4"
+          />
+          <rect
+            x={CX}
+            y={CY}
+            width={SVG_W - CX - 30}
+            height={SVG_H - CY - 30}
+            fill="#fef2f2"
+            opacity="0.15"
+            rx="4"
+          />
+
+          {/* ── Axes ── */}
+          <line
+            x1="30"
+            y1={CY}
+            x2={SVG_W - 30}
+            y2={CY}
+            stroke="#8B8B7A"
+            strokeWidth="1.2"
+          />
+          <line
+            x1={CX}
+            y1="30"
+            x2={CX}
+            y2={SVG_H - 30}
+            stroke="#8B8B7A"
+            strokeWidth="1.2"
+          />
+
+          {/* +/− symbols at axis ends */}
+          <text
+            x={SVG_W - 22}
+            y={CY + 5}
+            textAnchor="middle"
+            fill="#8B8B7A"
+            fontSize="16"
+            fontWeight="700"
+            fontFamily="'DM Sans', sans-serif"
           >
-            {/* Background */}
-            <rect x="0" y="0" width="400" height="400" fill="#FAFAF7" rx="8" />
+            +
+          </text>
+          <text
+            x="22"
+            y={CY + 5}
+            textAnchor="middle"
+            fill="#8B8B7A"
+            fontSize="16"
+            fontWeight="700"
+            fontFamily="'DM Sans', sans-serif"
+          >
+            −
+          </text>
+          <text
+            x={CX}
+            y="22"
+            textAnchor="middle"
+            fill="#8B8B7A"
+            fontSize="16"
+            fontWeight="700"
+            fontFamily="'DM Sans', sans-serif"
+          >
+            +
+          </text>
+          <text
+            x={CX}
+            y={SVG_H - 16}
+            textAnchor="middle"
+            fill="#8B8B7A"
+            fontSize="16"
+            fontWeight="700"
+            fontFamily="'DM Sans', sans-serif"
+          >
+            −
+          </text>
 
-            {/* Quadrant shading for context */}
-            {/* Top-left: Low price, High value (good zone) */}
-            <rect x="0" y="0" width="200" height="200" fill="#f0fdf4" opacity="0.4" />
-            {/* Bottom-right: High price, Low value (bad zone) */}
-            <rect x="200" y="200" width="200" height="200" fill="#fef2f2" opacity="0.3" />
+          {/* Axis label: Precio */}
+          <rect x={SVG_W - 78} y={CY + 10} width="50" height="16" fill="#FAFAF7" />
+          <text
+            x={SVG_W - 53}
+            y={CY + 23}
+            textAnchor="middle"
+            fill="#8B8B7A"
+            fontSize="11"
+            fontFamily="'DM Sans', sans-serif"
+          >
+            Precio
+          </text>
 
-            {/* X axis (horizontal) at y=200 */}
-            <line
-              x1="20"
-              y1="200"
-              x2="380"
-              y2="200"
-              stroke="#8B8B7A"
-              strokeWidth="1.2"
+          {/* Axis label: Valor Percibido (rotated) */}
+          <g transform={`rotate(-90 ${CX - 20} ${CY})`}>
+            <rect
+              x={CX - 20 - 48}
+              y={CY - 8}
+              width="96"
+              height="16"
+              fill="#FAFAF7"
             />
-            {/* X axis arrow right */}
-            <polygon points="380,200 372,196 372,204" fill="#8B8B7A" />
-            {/* X axis arrow left */}
-            <polygon points="20,200 28,196 28,204" fill="#8B8B7A" />
-
-            {/* Y axis (vertical) at x=200 */}
-            <line
-              x1="200"
-              y1="20"
-              x2="200"
-              y2="380"
-              stroke="#8B8B7A"
-              strokeWidth="1.2"
-            />
-            {/* Y axis arrow top */}
-            <polygon points="200,20 196,28 204,28" fill="#8B8B7A" />
-            {/* Y axis arrow bottom */}
-            <polygon points="200,380 196,372 204,372" fill="#8B8B7A" />
-
-            {/* Axis labels */}
             <text
-              x="380"
-              y="216"
-              textAnchor="end"
-              className="text-[11px]"
-              fill="#8B8B7A"
-              fontFamily="'DM Sans', sans-serif"
-            >
-              Precio alto
-            </text>
-            <text
-              x="20"
-              y="216"
-              textAnchor="start"
-              className="text-[11px]"
-              fill="#8B8B7A"
-              fontFamily="'DM Sans', sans-serif"
-            >
-              Precio bajo
-            </text>
-            <text
-              x="200"
-              y="16"
+              x={CX - 20}
+              y={CY + 4}
               textAnchor="middle"
-              className="text-[11px]"
               fill="#8B8B7A"
+              fontSize="11"
               fontFamily="'DM Sans', sans-serif"
             >
-              Valor alto
+              Valor Percibido
             </text>
-            <text
-              x="200"
-              y="396"
-              textAnchor="middle"
-              className="text-[11px]"
-              fill="#8B8B7A"
-              fontFamily="'DM Sans', sans-serif"
-            >
-              Valor bajo
-            </text>
+          </g>
 
-            {/* Dashed curve connecting viable strategies 1→2→3→4→5 */}
-            <path
-              d={viableStrategiesPath()}
-              fill="none"
-              stroke="#8B8B7A"
-              strokeWidth="1.5"
-              strokeDasharray="6 4"
-              className="pointer-events-none"
-              opacity="0.6"
-            />
+          {/* ── Failure ellipse (~45° tilt, lower-right quadrant) ── */}
+          <ellipse
+            cx={355}
+            cy={315}
+            rx={85}
+            ry={36}
+            transform="rotate(-45 355 315)"
+            fill="none"
+            stroke="#ef4444"
+            strokeWidth="1.5"
+            strokeDasharray="6 4"
+            opacity="0.45"
+          />
+          <rect x={378} y={367} width="96" height="30" fill="#FAFAF7" rx="2" />
+          <text
+            fill="#ef4444"
+            fontSize="9"
+            fontFamily="'DM Sans', sans-serif"
+            fontStyle="italic"
+          >
+            <tspan x="426" y="380" textAnchor="middle">
+              Estrategias destinadas
+            </tspan>
+            <tspan x="426" y="392" textAnchor="middle">
+              al fracaso
+            </tspan>
+          </text>
 
-            {/* Position circles */}
-            {POSITIONS.map((pos) => {
-              const isSelected = selectedId === pos.id
-              const isHovered = hoveredId === pos.id
-
-              // Determine fill and stroke
-              let fill = 'white'
-              let stroke = '#d1d5db'
-              let strokeWidth = 1.5
-              let textFill = '#1A1A1A'
-
-              if (pos.failure && !isSelected) {
-                fill = '#FEF2F2'
-                stroke = '#ef4444'
-                strokeWidth = 1.5
-              }
-
-              if (isSelected) {
-                fill = '#E8682A'
-                stroke = '#E8682A'
-                strokeWidth = 2
-                textFill = 'white'
-              } else if (isHovered) {
-                fill = pos.failure ? '#fee2e2' : '#f3f4f6'
-                strokeWidth = 2
-                stroke = pos.failure ? '#ef4444' : '#9ca3af'
-              }
-
-              return (
-                <g
-                  key={pos.id}
-                  className={readOnly ? '' : 'cursor-pointer'}
-                  onClick={() => handleSelectPosition(pos.id)}
-                  onMouseEnter={() => setHoveredId(pos.id)}
-                  onMouseLeave={() => setHoveredId(null)}
-                >
-                  <circle
-                    cx={pos.cx}
-                    cy={pos.cy}
-                    r={CIRCLE_RADIUS}
-                    fill={fill}
-                    stroke={stroke}
-                    strokeWidth={strokeWidth}
-                    className="transition-all duration-200"
-                  />
-                  <text
-                    x={pos.cx}
-                    y={pos.cy}
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    fill={textFill}
-                    className="text-[13px] pointer-events-none"
-                    fontFamily="'Playfair Display', serif"
-                    fontWeight="600"
-                  >
-                    {pos.id}
-                  </text>
-                </g>
-              )
-            })}
-          </svg>
-        </div>
-
-        {/* Legend Panel */}
-        <div className="w-full lg:flex-1 space-y-1.5">
-          <h4 className="text-sm font-heading font-semibold text-foreground mb-2">
-            Posiciones estrategicas
-          </h4>
-          {POSITIONS.map((pos) => {
-            const isSelected = selectedId === pos.id
-            const isHovered = hoveredId === pos.id
+          {/* ── Strategy arrows (5 arrows from center) ── */}
+          {STRATEGIES.map((s) => {
+            const isActive = position.segment === s.id
+            const isHov = hovered === s.id
+            const isSnap = snapPreview?.id === s.id
+            const color =
+              isActive || isHov || isSnap ? '#E8682A' : '#2D5016'
+            const sw = isActive || isHov || isSnap ? 2.5 : 1.8
+            const op = isActive || isHov || isSnap ? 1 : 0.65
 
             return (
-              <button
-                key={pos.id}
-                type="button"
-                disabled={readOnly}
-                onClick={() => handleSelectPosition(pos.id)}
-                onMouseEnter={() => setHoveredId(pos.id)}
-                onMouseLeave={() => setHoveredId(null)}
-                className={`
-                  w-full text-left px-3 py-2 rounded-lg transition-all duration-200
-                  border border-transparent
-                  ${readOnly ? 'cursor-default' : 'cursor-pointer hover:shadow-sm'}
-                  ${
-                    isSelected
-                      ? 'border-l-[3px] border-l-accent bg-orange-50'
-                      : isHovered
-                        ? pos.failure
-                          ? 'bg-red-50/80'
-                          : 'bg-gray-50'
-                        : pos.failure
-                          ? 'bg-[#FEF2F2]'
-                          : 'bg-white'
-                  }
-                `}
+              <g
+                key={s.id}
+                className={readOnly ? '' : 'cursor-pointer'}
+                onClick={() => clickStrategy(s.id)}
+                onMouseEnter={() => setHovered(s.id)}
+                onMouseLeave={() => setHovered(null)}
+                opacity={op}
               >
-                <div className="flex items-start gap-2">
-                  <span
-                    className={`
-                      inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-heading font-semibold flex-shrink-0 mt-0.5
-                      ${
-                        isSelected
-                          ? 'bg-accent text-white'
-                          : pos.failure
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-gray-100 text-foreground'
-                      }
-                    `}
-                  >
-                    {pos.id}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-body font-medium text-foreground leading-tight">
-                        {pos.name}
-                      </span>
-                      {pos.failure && (
-                        <span className="text-xs text-red-500 flex-shrink-0" title="Estrategia destinada al fracaso">
-                          ⚠️
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs font-body text-neutral leading-snug mt-0.5">
-                      {pos.description}
-                    </p>
-                    {pos.failure && (
-                      <p className="text-[10px] font-body text-red-500 mt-0.5 leading-tight">
-                        Estrategia destinada al fracaso
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </button>
+                <line
+                  x1={CX}
+                  y1={CY}
+                  x2={s.endX}
+                  y2={s.endY}
+                  stroke={color}
+                  strokeWidth={sw}
+                  className="transition-all duration-200"
+                />
+                <polygon
+                  points={arrowHead(CX, CY, s.endX, s.endY)}
+                  fill={color}
+                  className="transition-all duration-200"
+                />
+                {/* Snap preview ring */}
+                {isSnap && (
+                  <circle
+                    cx={s.endX}
+                    cy={s.endY}
+                    r={SNAP_R}
+                    fill="none"
+                    stroke="#E8682A"
+                    strokeWidth="1"
+                    strokeDasharray="4 3"
+                    opacity="0.35"
+                  />
+                )}
+              </g>
             )
           })}
-        </div>
+
+          {/* ── Strategy labels (white bg + text) ── */}
+          {STRATEGIES.map((s) => {
+            const isActive = position.segment === s.id
+            const fill = isActive ? '#E8682A' : '#1A1A1A'
+            const fw = isActive ? '600' : '500'
+
+            const maxLen = Math.max(...s.lines.map((l) => l.length))
+            const bw = maxLen * 6.2 + 10
+            const bh = s.lines.length * 14 + 6
+            let bx: number
+            if (s.labelAnchor === 'middle') bx = s.labelX - bw / 2
+            else if (s.labelAnchor === 'end') bx = s.labelX - bw
+            else bx = s.labelX
+            const by = s.labelY - 12
+
+            return (
+              <g key={`lbl-${s.id}`}>
+                <rect
+                  x={bx - 2}
+                  y={by}
+                  width={bw + 4}
+                  height={bh}
+                  fill="#FAFAF7"
+                  rx="2"
+                  opacity="0.92"
+                />
+                <text
+                  x={s.labelX}
+                  y={s.labelY}
+                  textAnchor={s.labelAnchor}
+                  fill={fill}
+                  fontSize="11"
+                  fontFamily="'DM Sans', sans-serif"
+                  fontWeight={fw}
+                >
+                  {s.lines.map((ln, i) => (
+                    <tspan key={i} x={s.labelX} dy={i === 0 ? 0 : 14}>
+                      {ln}
+                    </tspan>
+                  ))}
+                </text>
+              </g>
+            )
+          })}
+
+          {/* ── Target position marker (outline star) ── */}
+          {target && target.id !== position.segment && (
+            <polygon
+              points={starPts(target.endX, target.endY, 10, 4)}
+              fill="none"
+              stroke="#E8682A"
+              strokeWidth="1.5"
+              strokeDasharray="3 2"
+              opacity="0.45"
+            />
+          )}
+
+          {/* ── Draggable star marker ── */}
+          <polygon
+            points={starPts(star.x, star.y)}
+            fill={dragging ? '#E8682A' : '#8B8B7A'}
+            stroke={dragging ? '#C4541E' : '#6B6B6B'}
+            strokeWidth="1.5"
+            className={
+              readOnly
+                ? ''
+                : dragging
+                  ? 'cursor-grabbing'
+                  : 'cursor-grab'
+            }
+            onMouseDown={onStarDown}
+            onTouchStart={onStarDown}
+          />
+
+          {/* Instruction hint */}
+          {!readOnly && position.segment === 0 && !dragging && (
+            <g>
+              <rect
+                x={CX - 68}
+                y={CY + 22}
+                width="136"
+                height="18"
+                fill="#FAFAF7"
+                rx="3"
+              />
+              <text
+                x={CX}
+                y={CY + 35}
+                textAnchor="middle"
+                fill="#8B8B7A"
+                fontSize="10"
+                fontFamily="'DM Sans', sans-serif"
+                fontStyle="italic"
+              >
+                Arrastra la ★ a tu estrategia
+              </text>
+            </g>
+          )}
+        </svg>
       </div>
 
-      {/* Reflection Section */}
+      {/* ── Reflection Panel (below SVG) ── */}
       {!readOnly && (
-        <div className="space-y-4 border-t border-gray-200 pt-4">
-          {/* Current selection indicator */}
-          {selectedPosition && (
-            <p className="text-sm font-body text-foreground">
-              📍 Posicion actual seleccionada:{' '}
+        <div className="space-y-4">
+          {/* Current selection */}
+          <div className="flex items-center gap-2 text-sm font-body">
+            <span className="text-neutral">Estrategia actual:</span>
+            {selected ? (
               <span className="font-semibold text-accent">
-                {selectedPosition.id}. {selectedPosition.name}
+                {selected.name}
               </span>
+            ) : (
+              <span className="text-neutral italic">
+                No seleccionada — arrastra la estrella
+              </span>
+            )}
+          </div>
+
+          {selected && (
+            <p className="text-xs text-neutral font-body bg-neutral-lighter/50 rounded-lg px-3 py-2">
+              {selected.description}
             </p>
           )}
 
           {/* Justification textarea */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-heading font-semibold text-foreground">
-              ¿Por que crees que tu negocio esta en esta posicion?
+          <div className="field-group">
+            <label className="field-label">
+              ¿Por qué crees que tu negocio está en esta posición?
             </label>
             <textarea
               value={position.justification}
               onChange={(e) =>
                 onChange({ ...position, justification: e.target.value })
               }
-              placeholder="Explica por que consideras que tu empresa se ubica en esta posicion del reloj estrategico..."
+              placeholder="Explica por qué consideras que tu empresa se ubica en esta posición del reloj estratégico..."
               rows={3}
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white
-                text-foreground font-body text-sm placeholder:text-neutral resize-y
-                focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+              className="field-input resize-y"
             />
           </div>
 
-          {/* Target position dropdown */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-heading font-semibold text-foreground">
-              ¿A cual posicion quisieras moverte?
+          {/* Target position selector */}
+          <div className="field-group">
+            <label className="field-label">
+              ¿A cuál posición quisieras moverte?
             </label>
             <select
               value={position.targetPosition || ''}
@@ -422,17 +649,14 @@ export function StrategicClock({
                   targetPosition: Number(e.target.value),
                 })
               }
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white
-                text-foreground font-body text-sm
-                focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+              className="field-input"
             >
               <option value="" disabled>
-                Selecciona una posicion objetivo...
+                Selecciona una posición objetivo…
               </option>
-              {POSITIONS.map((pos) => (
-                <option key={pos.id} value={pos.id}>
-                  {pos.id}. {pos.name}
-                  {pos.failure ? ' (⚠️ riesgo de fracaso)' : ''}
+              {STRATEGIES.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
                 </option>
               ))}
             </select>
@@ -442,34 +666,31 @@ export function StrategicClock({
 
       {/* Read-only display */}
       {readOnly && (
-        <div className="space-y-3 border-t border-gray-200 pt-4">
-          {selectedPosition && (
+        <div className="space-y-3">
+          {selected && (
             <p className="text-sm font-body text-foreground">
-              📍 Posicion actual:{' '}
+              📍 Estrategia actual:{' '}
               <span className="font-semibold text-accent">
-                {selectedPosition.id}. {selectedPosition.name}
+                {selected.name}
               </span>
             </p>
           )}
           {position.justification && (
             <div className="space-y-1">
               <p className="text-sm font-heading font-semibold text-foreground">
-                Justificacion:
+                Justificación:
               </p>
               <p className="text-sm font-body text-neutral">
                 {position.justification}
               </p>
             </div>
           )}
-          {position.targetPosition > 0 && (
+          {target && (
             <div className="space-y-1">
               <p className="text-sm font-heading font-semibold text-foreground">
-                Posicion objetivo:
+                Posición objetivo:
               </p>
-              <p className="text-sm font-body text-neutral">
-                {position.targetPosition}.{' '}
-                {POSITIONS.find((p) => p.id === position.targetPosition)?.name ?? ''}
-              </p>
+              <p className="text-sm font-body text-neutral">{target.name}</p>
             </div>
           )}
         </div>

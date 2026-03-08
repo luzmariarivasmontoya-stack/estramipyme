@@ -6,14 +6,11 @@ import { STAGES } from '@/utils/constants'
 /*  Strategic Clock segment labels (mirrored from StrategicClock.tsx)  */
 /* ------------------------------------------------------------------ */
 const CLOCK_SEGMENTS: Record<number, string> = {
-  1: 'Bajo precio / bajo valor',
+  1: 'Bajo precio / Valor añadido',
   2: 'Bajo precio',
-  3: 'Hibrido',
-  4: 'Diferenciacion',
-  5: 'Diferenciacion enfocada',
-  6: 'Alto precio / estandar',
-  7: 'Precio elevado / bajo valor',
-  8: 'Bajo valor / precio estandar',
+  3: 'Híbrida',
+  4: 'Diferenciación',
+  5: 'Diferenciación segmentada',
 }
 
 /* ------------------------------------------------------------------ */
