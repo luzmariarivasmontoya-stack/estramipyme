@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState } from 'react'
+import { useState } from 'react'
 import type { StrategicClockPosition } from '@/types/stages'
 
 interface StrategicClockProps {
@@ -8,513 +8,470 @@ interface StrategicClockProps {
 }
 
 /*
- * Bowman's Strategic Clock
- * 8 segments arranged clockwise starting from the top-right.
- * Each segment spans 45 degrees.
- * Segment 1 starts at -90 degrees (12 o'clock) and moves clockwise.
- *
- * Layout:
- *   Y axis: Valor Percibido (low at bottom, high at top)
- *   X axis: Precio (low at left, high at right)
+ * Bowman's Strategic Clock — Cartesian Plane Implementation
+ * X axis: Precio (low left, high right)
+ * Y axis: Valor Percibido (low bottom, high top)
+ * 8 position circles placed on the plane
  */
 
-interface Segment {
-  number: number
-  label: string
-  startAngle: number // degrees, 0 = right, clockwise
-  tooltip: string
+interface ClockPosition {
+  id: number
+  name: string
+  cx: number
+  cy: number
+  failure: boolean
+  description: string
 }
 
-const SEGMENTS: Segment[] = [
+const POSITIONS: ClockPosition[] = [
   {
-    number: 1,
-    label: 'Bajo precio / bajo valor',
-    startAngle: -112.5,
-    tooltip: 'Bajo precio, bajo valor percibido. Productos basicos sin diferenciacion, competencia en costos minimos.',
+    id: 1,
+    name: 'Sin frills',
+    cx: 110,
+    cy: 310,
+    failure: false,
+    description: 'Precio bajo, bajo valor percibido. Productos basicos sin diferenciacion.',
   },
   {
-    number: 2,
-    label: 'Bajo precio',
-    startAngle: -67.5,
-    tooltip: 'Precio bajo con valor aceptable. Estrategia tipo "lider en costos", busca volumen de ventas.',
+    id: 2,
+    name: 'Precio bajo',
+    cx: 90,
+    cy: 220,
+    failure: false,
+    description: 'Precio bajo con valor aceptable. Estrategia tipo lider en costos.',
   },
   {
-    number: 3,
-    label: 'Hibrido',
-    startAngle: -22.5,
-    tooltip: 'Combinacion de precio bajo y buen valor percibido. Ofrece diferenciacion a precios competitivos.',
+    id: 3,
+    name: 'Hibrida',
+    cx: 130,
+    cy: 140,
+    failure: false,
+    description: 'Combinacion de precio bajo y buen valor percibido. Diferenciacion a precios competitivos.',
   },
   {
-    number: 4,
-    label: 'Diferenciacion',
-    startAngle: 22.5,
-    tooltip: 'Alto valor percibido a precio razonable. Destaca por calidad, marca o innovacion.',
+    id: 4,
+    name: 'Diferenciacion',
+    cx: 210,
+    cy: 90,
+    failure: false,
+    description: 'Alto valor percibido a precio razonable. Destaca por calidad, marca o innovacion.',
   },
   {
-    number: 5,
-    label: 'Diferenciacion enfocada',
-    startAngle: 67.5,
-    tooltip: 'Maximo valor percibido, precio premium. Productos o servicios exclusivos para nichos especificos.',
+    id: 5,
+    name: 'Dif. segmentada',
+    cx: 310,
+    cy: 90,
+    failure: false,
+    description: 'Maximo valor percibido, precio premium. Productos exclusivos para nichos especificos.',
   },
   {
-    number: 6,
-    label: 'Alto precio / estandar',
-    startAngle: 112.5,
-    tooltip: 'Precio alto sin valor diferenciado. Riesgo de perder clientes frente a alternativas mas competitivas.',
+    id: 6,
+    name: 'Mayor precio / valor std',
+    cx: 340,
+    cy: 180,
+    failure: true,
+    description: 'Precio alto sin valor diferenciado. Riesgo de perder clientes frente a alternativas.',
   },
   {
-    number: 7,
-    label: 'Precio elevado / bajo valor',
-    startAngle: 157.5,
-    tooltip: 'Precio elevado con bajo valor percibido. Posicion insostenible, solo viable con monopolio o cautividad.',
+    id: 7,
+    name: 'Mayor precio / bajo valor',
+    cx: 320,
+    cy: 280,
+    failure: true,
+    description: 'Precio elevado con bajo valor percibido. Posicion insostenible.',
   },
   {
-    number: 8,
-    label: 'Bajo valor / precio estandar',
-    startAngle: -157.5,
-    tooltip: 'Valor bajo a precio estandar. Posicion de desventaja competitiva, riesgo de perdida de mercado.',
+    id: 8,
+    name: 'Bajo valor / precio std',
+    cx: 220,
+    cy: 320,
+    failure: true,
+    description: 'Valor bajo a precio estandar. Desventaja competitiva, riesgo de perdida de mercado.',
   },
 ]
 
-const SVG_SIZE = 440
-const CENTER = SVG_SIZE / 2
-const CLOCK_RADIUS = 170
-const LABEL_RADIUS = CLOCK_RADIUS + 28
-const MARKER_RADIUS = 10
+/** Build SVG path for the dashed arc connecting viable strategies (1→2→3→4→5) */
+function viableStrategiesPath(): string {
+  const viablePositions = POSITIONS.filter((p) => p.id >= 1 && p.id <= 5).sort(
+    (a, b) => a.id - b.id
+  )
+  if (viablePositions.length < 2) return ''
 
-/** Convert degrees to radians */
-function degToRad(deg: number): number {
-  return (deg * Math.PI) / 180
-}
+  const points = viablePositions.map((p) => ({ x: p.cx, y: p.cy }))
 
-/** Get (x, y) from center, radius and angle (degrees, 0=right, clockwise) */
-function polarToXY(cx: number, cy: number, radius: number, angleDeg: number) {
-  const rad = degToRad(angleDeg)
-  return {
-    x: cx + radius * Math.cos(rad),
-    y: cy + radius * Math.sin(rad),
+  // Build a smooth quadratic bezier curve through the points
+  let d = `M ${points[0].x} ${points[0].y}`
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1]
+    const curr = points[i]
+    const midX = (prev.x + curr.x) / 2
+    const midY = (prev.y + curr.y) / 2
+    d += ` Q ${prev.x} ${prev.y} ${midX} ${midY}`
   }
+  // Final segment to last point
+  const last = points[points.length - 1]
+  const secondLast = points[points.length - 2]
+  d += ` Q ${secondLast.x} ${secondLast.y} ${last.x} ${last.y}`
+
+  return d
 }
 
-/** Calculate which segment a given angle falls into (1-8) */
-function angleToSegment(angleDeg: number): number {
-  // Normalize to 0..360
-  let a = ((angleDeg % 360) + 360) % 360
-  // Shift so segment 1 starts at top-left of clock
-  a = (a + 112.5) % 360
-  const seg = Math.floor(a / 45) + 1
-  return Math.min(Math.max(seg, 1), 8)
-}
-
-/** Build an SVG arc path between two angles at a given radius */
-function arcPath(
-  cx: number,
-  cy: number,
-  radius: number,
-  startAngle: number,
-  endAngle: number
-): string {
-  const start = polarToXY(cx, cy, radius, startAngle)
-  const end = polarToXY(cx, cy, radius, endAngle)
-  const largeArc = Math.abs(endAngle - startAngle) > 180 ? 1 : 0
-  return `M ${cx} ${cy} L ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y} Z`
-}
-
-// Soft alternating fills for segments
-const SEGMENT_FILLS = [
-  '#f0f4f8', // 1
-  '#e8f0fe', // 2
-  '#e3f2e8', // 3
-  '#dff0f7', // 4
-  '#e8e3f2', // 5
-  '#fef3e8', // 6
-  '#fce8e8', // 7
-  '#f5f0e3', // 8
-]
+const CIRCLE_RADIUS = 18
 
 export function StrategicClock({
   position,
   onChange,
   readOnly = false,
 }: StrategicClockProps) {
-  const svgRef = useRef<SVGSVGElement>(null)
-  const [isDragging, setIsDragging] = useState(false)
-  const [hoveredSegment, setHoveredSegment] = useState<number | null>(null)
-  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  const [hoveredId, setHoveredId] = useState<number | null>(null)
 
-  /** Convert pointer event to angle + distance, then call onChange */
-  const handlePointerPosition = useCallback(
-    (clientX: number, clientY: number) => {
-      if (readOnly || !svgRef.current) return
-      const rect = svgRef.current.getBoundingClientRect()
-      const scale = SVG_SIZE / rect.width
-      const px = (clientX - rect.left) * scale - CENTER
-      const py = (clientY - rect.top) * scale - CENTER
-      const dist = Math.sqrt(px * px + py * py)
-      if (dist < 10) return // too close to center
+  const selectedId = position.segment
 
-      const angleDeg = (Math.atan2(py, px) * 180) / Math.PI
-      const segment = angleToSegment(angleDeg)
-      const normalizedAngle = ((angleDeg % 360) + 360) % 360
-
-      onChange({
-        ...position,
-        segment,
-        angle: normalizedAngle,
-      })
-
-      void dist
-    },
-    [readOnly, onChange, position]
-  )
-
-  const handlePointerDown = useCallback(
-    (e: React.PointerEvent<SVGSVGElement>) => {
-      if (readOnly) return
-      setIsDragging(true)
-      svgRef.current?.setPointerCapture(e.pointerId)
-      handlePointerPosition(e.clientX, e.clientY)
-    },
-    [readOnly, handlePointerPosition]
-  )
-
-  const handlePointerMove = useCallback(
-    (e: React.PointerEvent<SVGSVGElement>) => {
-      if (!isDragging || readOnly) return
-      handlePointerPosition(e.clientX, e.clientY)
-    },
-    [isDragging, readOnly, handlePointerPosition]
-  )
-
-  const handlePointerUp = useCallback(
-    (e: React.PointerEvent<SVGSVGElement>) => {
-      if (!isDragging) return
-      setIsDragging(false)
-      svgRef.current?.releasePointerCapture(e.pointerId)
-    },
-    [isDragging]
-  )
-
-  /** Handle segment hover for tooltips */
-  const handleSegmentMouseEnter = (segNumber: number, e: React.MouseEvent) => {
-    setHoveredSegment(segNumber)
-    const svgRect = svgRef.current?.getBoundingClientRect()
-    if (svgRect) {
-      setTooltipPos({
-        x: e.clientX - svgRect.left,
-        y: e.clientY - svgRect.top,
-      })
-    }
+  const handleSelectPosition = (id: number) => {
+    if (readOnly) return
+    onChange({
+      ...position,
+      segment: id,
+      angle: id * 45, // Keep angle consistent with segment
+    })
   }
 
-  const handleSegmentMouseMove = (e: React.MouseEvent) => {
-    const svgRect = svgRef.current?.getBoundingClientRect()
-    if (svgRect) {
-      setTooltipPos({
-        x: e.clientX - svgRect.left,
-        y: e.clientY - svgRect.top,
-      })
-    }
-  }
-
-  const handleSegmentMouseLeave = () => {
-    setHoveredSegment(null)
-  }
-
-  // Compute marker position from stored angle
-  const markerDistance = CLOCK_RADIUS * 0.65
-  const markerAngleRad = degToRad(position.angle)
-  const markerX = CENTER + markerDistance * Math.cos(markerAngleRad)
-  const markerY = CENTER + markerDistance * Math.sin(markerAngleRad)
-
-  // Get current segment info
-  const currentSegment = SEGMENTS.find((s) => s.number === position.segment)
-  const hoveredSegmentData = SEGMENTS.find((s) => s.number === hoveredSegment)
+  const selectedPosition = POSITIONS.find((p) => p.id === selectedId)
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      {/* SVG container with relative positioning for tooltip overlay */}
-      <div className="relative w-full max-w-md">
-        <svg
-          ref={svgRef}
-          viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`}
-          className={`w-full select-none ${
-            readOnly ? '' : 'cursor-crosshair'
-          }`}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          style={{ touchAction: 'none' }}
-        >
-          {/* Background circle */}
-          <circle
-            cx={CENTER}
-            cy={CENTER}
-            r={CLOCK_RADIUS}
-            fill="#fafbfc"
-            stroke="#d1d5db"
-            strokeWidth={1.5}
-          />
+    <div className="flex flex-col gap-6">
+      {/* Main layout: SVG + Legend side by side on desktop */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        {/* SVG Cartesian Plane */}
+        <div className="w-full max-w-[420px] flex-shrink-0">
+          <svg
+            viewBox="0 0 400 400"
+            className="w-full select-none"
+            style={{ touchAction: 'none' }}
+          >
+            {/* Background */}
+            <rect x="0" y="0" width="400" height="400" fill="#FAFAF7" rx="8" />
 
-          {/* Segments */}
-          {SEGMENTS.map((seg, i) => {
-            const startA = seg.startAngle
-            const endA = startA + 45
-            const isActive = position.segment === seg.number
-            const isHovered = hoveredSegment === seg.number
+            {/* Quadrant shading for context */}
+            {/* Top-left: Low price, High value (good zone) */}
+            <rect x="0" y="0" width="200" height="200" fill="#f0fdf4" opacity="0.4" />
+            {/* Bottom-right: High price, Low value (bad zone) */}
+            <rect x="200" y="200" width="200" height="200" fill="#fef2f2" opacity="0.3" />
+
+            {/* X axis (horizontal) at y=200 */}
+            <line
+              x1="20"
+              y1="200"
+              x2="380"
+              y2="200"
+              stroke="#8B8B7A"
+              strokeWidth="1.2"
+            />
+            {/* X axis arrow right */}
+            <polygon points="380,200 372,196 372,204" fill="#8B8B7A" />
+            {/* X axis arrow left */}
+            <polygon points="20,200 28,196 28,204" fill="#8B8B7A" />
+
+            {/* Y axis (vertical) at x=200 */}
+            <line
+              x1="200"
+              y1="20"
+              x2="200"
+              y2="380"
+              stroke="#8B8B7A"
+              strokeWidth="1.2"
+            />
+            {/* Y axis arrow top */}
+            <polygon points="200,20 196,28 204,28" fill="#8B8B7A" />
+            {/* Y axis arrow bottom */}
+            <polygon points="200,380 196,372 204,372" fill="#8B8B7A" />
+
+            {/* Axis labels */}
+            <text
+              x="380"
+              y="216"
+              textAnchor="end"
+              className="text-[11px]"
+              fill="#8B8B7A"
+              fontFamily="'DM Sans', sans-serif"
+            >
+              Precio alto
+            </text>
+            <text
+              x="20"
+              y="216"
+              textAnchor="start"
+              className="text-[11px]"
+              fill="#8B8B7A"
+              fontFamily="'DM Sans', sans-serif"
+            >
+              Precio bajo
+            </text>
+            <text
+              x="200"
+              y="16"
+              textAnchor="middle"
+              className="text-[11px]"
+              fill="#8B8B7A"
+              fontFamily="'DM Sans', sans-serif"
+            >
+              Valor alto
+            </text>
+            <text
+              x="200"
+              y="396"
+              textAnchor="middle"
+              className="text-[11px]"
+              fill="#8B8B7A"
+              fontFamily="'DM Sans', sans-serif"
+            >
+              Valor bajo
+            </text>
+
+            {/* Dashed curve connecting viable strategies 1→2→3→4→5 */}
+            <path
+              d={viableStrategiesPath()}
+              fill="none"
+              stroke="#8B8B7A"
+              strokeWidth="1.5"
+              strokeDasharray="6 4"
+              className="pointer-events-none"
+              opacity="0.6"
+            />
+
+            {/* Position circles */}
+            {POSITIONS.map((pos) => {
+              const isSelected = selectedId === pos.id
+              const isHovered = hoveredId === pos.id
+
+              // Determine fill and stroke
+              let fill = 'white'
+              let stroke = '#d1d5db'
+              let strokeWidth = 1.5
+              let textFill = '#1A1A1A'
+
+              if (pos.failure && !isSelected) {
+                fill = '#FEF2F2'
+                stroke = '#ef4444'
+                strokeWidth = 1.5
+              }
+
+              if (isSelected) {
+                fill = '#E8682A'
+                stroke = '#E8682A'
+                strokeWidth = 2
+                textFill = 'white'
+              } else if (isHovered) {
+                fill = pos.failure ? '#fee2e2' : '#f3f4f6'
+                strokeWidth = 2
+                stroke = pos.failure ? '#ef4444' : '#9ca3af'
+              }
+
+              return (
+                <g
+                  key={pos.id}
+                  className={readOnly ? '' : 'cursor-pointer'}
+                  onClick={() => handleSelectPosition(pos.id)}
+                  onMouseEnter={() => setHoveredId(pos.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                >
+                  <circle
+                    cx={pos.cx}
+                    cy={pos.cy}
+                    r={CIRCLE_RADIUS}
+                    fill={fill}
+                    stroke={stroke}
+                    strokeWidth={strokeWidth}
+                    className="transition-all duration-200"
+                  />
+                  <text
+                    x={pos.cx}
+                    y={pos.cy}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill={textFill}
+                    className="text-[13px] pointer-events-none"
+                    fontFamily="'Playfair Display', serif"
+                    fontWeight="600"
+                  >
+                    {pos.id}
+                  </text>
+                </g>
+              )
+            })}
+          </svg>
+        </div>
+
+        {/* Legend Panel */}
+        <div className="w-full lg:flex-1 space-y-1.5">
+          <h4 className="text-sm font-heading font-semibold text-foreground mb-2">
+            Posiciones estrategicas
+          </h4>
+          {POSITIONS.map((pos) => {
+            const isSelected = selectedId === pos.id
+            const isHovered = hoveredId === pos.id
 
             return (
-              <path
-                key={seg.number}
-                d={arcPath(CENTER, CENTER, CLOCK_RADIUS, startA, endA)}
-                fill={isActive ? '#e0e7ff' : isHovered ? '#eef2ff' : SEGMENT_FILLS[i]}
-                stroke="#c7cdd5"
-                strokeWidth={0.8}
-                className="transition-colors duration-200"
-                onMouseEnter={(e) => handleSegmentMouseEnter(seg.number, e)}
-                onMouseMove={handleSegmentMouseMove}
-                onMouseLeave={handleSegmentMouseLeave}
-              />
-            )
-          })}
-
-          {/* Axes */}
-          {/* X axis (Precio) */}
-          <line
-            x1={CENTER - CLOCK_RADIUS - 10}
-            y1={CENTER}
-            x2={CENTER + CLOCK_RADIUS + 10}
-            y2={CENTER}
-            stroke="#94a3b8"
-            strokeWidth={1.2}
-            strokeDasharray="4 3"
-            className="pointer-events-none"
-          />
-          {/* Y axis (Valor Percibido) */}
-          <line
-            x1={CENTER}
-            y1={CENTER - CLOCK_RADIUS - 10}
-            x2={CENTER}
-            y2={CENTER + CLOCK_RADIUS + 10}
-            stroke="#94a3b8"
-            strokeWidth={1.2}
-            strokeDasharray="4 3"
-            className="pointer-events-none"
-          />
-
-          {/* Axis labels */}
-          <text
-            x={CENTER + CLOCK_RADIUS + 16}
-            y={CENTER + 5}
-            textAnchor="start"
-            className="fill-neutral text-[11px] font-body pointer-events-none"
-          >
-            Precio +
-          </text>
-          <text
-            x={CENTER - CLOCK_RADIUS - 16}
-            y={CENTER + 5}
-            textAnchor="end"
-            className="fill-neutral text-[11px] font-body pointer-events-none"
-          >
-            Precio -
-          </text>
-          <text
-            x={CENTER}
-            y={CENTER - CLOCK_RADIUS - 16}
-            textAnchor="middle"
-            className="fill-neutral text-[11px] font-body pointer-events-none"
-          >
-            Valor +
-          </text>
-          <text
-            x={CENTER}
-            y={CENTER + CLOCK_RADIUS + 24}
-            textAnchor="middle"
-            className="fill-neutral text-[11px] font-body pointer-events-none"
-          >
-            Valor -
-          </text>
-
-          {/* Segment divider lines */}
-          {SEGMENTS.map((seg) => {
-            const p = polarToXY(CENTER, CENTER, CLOCK_RADIUS, seg.startAngle)
-            return (
-              <line
-                key={`line-${seg.number}`}
-                x1={CENTER}
-                y1={CENTER}
-                x2={p.x}
-                y2={p.y}
-                stroke="#c7cdd5"
-                strokeWidth={0.8}
-                className="pointer-events-none"
-              />
-            )
-          })}
-
-          {/* Segment number labels (inside the segment) */}
-          {SEGMENTS.map((seg) => {
-            const midAngle = seg.startAngle + 22.5
-            const labelPos = polarToXY(CENTER, CENTER, CLOCK_RADIUS * 0.4, midAngle)
-            return (
-              <text
-                key={`num-${seg.number}`}
-                x={labelPos.x}
-                y={labelPos.y + 1}
-                textAnchor="middle"
-                dominantBaseline="central"
-                className="fill-neutral text-xs font-heading font-semibold pointer-events-none"
+              <button
+                key={pos.id}
+                type="button"
+                disabled={readOnly}
+                onClick={() => handleSelectPosition(pos.id)}
+                onMouseEnter={() => setHoveredId(pos.id)}
+                onMouseLeave={() => setHoveredId(null)}
+                className={`
+                  w-full text-left px-3 py-2 rounded-lg transition-all duration-200
+                  border border-transparent
+                  ${readOnly ? 'cursor-default' : 'cursor-pointer hover:shadow-sm'}
+                  ${
+                    isSelected
+                      ? 'border-l-[3px] border-l-accent bg-orange-50'
+                      : isHovered
+                        ? pos.failure
+                          ? 'bg-red-50/80'
+                          : 'bg-gray-50'
+                        : pos.failure
+                          ? 'bg-[#FEF2F2]'
+                          : 'bg-white'
+                  }
+                `}
               >
-                {seg.number}
-              </text>
+                <div className="flex items-start gap-2">
+                  <span
+                    className={`
+                      inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-heading font-semibold flex-shrink-0 mt-0.5
+                      ${
+                        isSelected
+                          ? 'bg-accent text-white'
+                          : pos.failure
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-gray-100 text-foreground'
+                      }
+                    `}
+                  >
+                    {pos.id}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-body font-medium text-foreground leading-tight">
+                        {pos.name}
+                      </span>
+                      {pos.failure && (
+                        <span className="text-xs text-red-500 flex-shrink-0" title="Estrategia destinada al fracaso">
+                          ⚠️
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs font-body text-neutral leading-snug mt-0.5">
+                      {pos.description}
+                    </p>
+                    {pos.failure && (
+                      <p className="text-[10px] font-body text-red-500 mt-0.5 leading-tight">
+                        Estrategia destinada al fracaso
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </button>
             )
           })}
-
-          {/* Segment text labels (outside the circle) */}
-          {SEGMENTS.map((seg) => {
-            const midAngle = seg.startAngle + 22.5
-            const pos = polarToXY(CENTER, CENTER, LABEL_RADIUS, midAngle)
-
-            // Decide text-anchor based on x position relative to center
-            let anchor: 'start' | 'middle' | 'end' = 'middle'
-            if (pos.x > CENTER + 20) anchor = 'start'
-            else if (pos.x < CENTER - 20) anchor = 'end'
-            else anchor = 'middle'
-
-            // Break label into lines for long labels
-            const words = seg.label.split(' / ')
-            const isTwoLine = words.length === 2
-
-            return (
-              <text
-                key={`label-${seg.number}`}
-                x={pos.x}
-                y={pos.y}
-                textAnchor={anchor}
-                dominantBaseline="central"
-                className="fill-foreground text-[9px] font-body pointer-events-none"
-              >
-                {isTwoLine ? (
-                  <>
-                    <tspan x={pos.x} dy="-0.5em">
-                      {words[0]}
-                    </tspan>
-                    <tspan x={pos.x} dy="1.2em">
-                      {words[1]}
-                    </tspan>
-                  </>
-                ) : (
-                  seg.label
-                )}
-              </text>
-            )
-          })}
-
-          {/* Center dot */}
-          <circle cx={CENTER} cy={CENTER} r={3} fill="#94a3b8" className="pointer-events-none" />
-
-          {/* Position marker */}
-          <circle
-            cx={markerX}
-            cy={markerY}
-            r={MARKER_RADIUS}
-            className={`${
-              readOnly
-                ? 'fill-accent/80'
-                : isDragging
-                  ? 'fill-accent'
-                  : 'fill-accent/90'
-            } transition-colors pointer-events-none`}
-            stroke="white"
-            strokeWidth={3}
-            filter="url(#markerShadow)"
-            style={{ cursor: readOnly ? 'default' : 'grab' }}
-          />
-
-          {/* Inner ring marker decoration */}
-          <circle
-            cx={markerX}
-            cy={markerY}
-            r={4}
-            fill="white"
-            className="pointer-events-none"
-          />
-
-          {/* SVG filter for marker shadow */}
-          <defs>
-            <filter id="markerShadow" x="-50%" y="-50%" width="200%" height="200%">
-              <feDropShadow dx="0" dy="1" stdDeviation="2" floodOpacity="0.25" />
-            </filter>
-          </defs>
-        </svg>
-
-        {/* Tooltip overlay */}
-        {hoveredSegmentData && (
-          <div
-            className="absolute z-50 pointer-events-none"
-            style={{
-              left: tooltipPos.x,
-              top: tooltipPos.y - 12,
-              transform: 'translate(-50%, -100%)',
-            }}
-          >
-            <div className="max-w-[220px] px-3 py-2 bg-foreground text-white text-xs font-body rounded-lg shadow-lg">
-              <span className="font-semibold">{hoveredSegmentData.number}. {hoveredSegmentData.label}</span>
-              <br />
-              <span className="text-white/80">{hoveredSegmentData.tooltip}</span>
-              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-foreground" />
-            </div>
-          </div>
-        )}
+        </div>
       </div>
 
-      {/* Current position label */}
-      {currentSegment && (
-        <div className="text-center">
-          <p className="text-sm font-body text-neutral">Posicion actual:</p>
-          <p className="text-base font-heading font-semibold text-foreground">
-            {currentSegment.number}. {currentSegment.label}
-          </p>
+      {/* Reflection Section */}
+      {!readOnly && (
+        <div className="space-y-4 border-t border-gray-200 pt-4">
+          {/* Current selection indicator */}
+          {selectedPosition && (
+            <p className="text-sm font-body text-foreground">
+              📍 Posicion actual seleccionada:{' '}
+              <span className="font-semibold text-accent">
+                {selectedPosition.id}. {selectedPosition.name}
+              </span>
+            </p>
+          )}
+
+          {/* Justification textarea */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-heading font-semibold text-foreground">
+              ¿Por que crees que tu negocio esta en esta posicion?
+            </label>
+            <textarea
+              value={position.justification}
+              onChange={(e) =>
+                onChange({ ...position, justification: e.target.value })
+              }
+              placeholder="Explica por que consideras que tu empresa se ubica en esta posicion del reloj estrategico..."
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white
+                text-foreground font-body text-sm placeholder:text-neutral resize-y
+                focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+            />
+          </div>
+
+          {/* Target position dropdown */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-heading font-semibold text-foreground">
+              ¿A cual posicion quisieras moverte?
+            </label>
+            <select
+              value={position.targetPosition || ''}
+              onChange={(e) =>
+                onChange({
+                  ...position,
+                  targetPosition: Number(e.target.value),
+                })
+              }
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white
+                text-foreground font-body text-sm
+                focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+            >
+              <option value="" disabled>
+                Selecciona una posicion objetivo...
+              </option>
+              {POSITIONS.map((pos) => (
+                <option key={pos.id} value={pos.id}>
+                  {pos.id}. {pos.name}
+                  {pos.failure ? ' (⚠️ riesgo de fracaso)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       )}
 
-      {!readOnly && (
-        <p className="text-xs text-neutral font-body text-center max-w-sm">
-          Haz clic o arrastra el marcador en el reloj para indicar la posicion
-          estrategica actual de tu empresa.
-        </p>
-      )}
-
-      {/* Justification textarea */}
-      {!readOnly && (
-        <div className="w-full space-y-2">
-          <label className="text-sm font-heading font-semibold text-foreground">
-            ¿Por que tu negocio esta en esta posicion?
-          </label>
-          <textarea
-            value={position.justification}
-            onChange={(e) =>
-              onChange({ ...position, justification: e.target.value })
-            }
-            placeholder="Explica por que consideras que tu empresa se ubica en esta posicion del reloj estrategico..."
-            rows={4}
-            className="w-full px-4 py-3 rounded-xl border border-neutral-lighter bg-white
-              text-foreground font-body text-sm placeholder:text-neutral resize-y
-              focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
-          />
-        </div>
-      )}
-
-      {/* Read-only justification display */}
-      {readOnly && position.justification && (
-        <div className="w-full space-y-1">
-          <p className="text-sm font-heading font-semibold text-foreground">
-            Justificacion:
-          </p>
-          <p className="text-sm font-body text-neutral">
-            {position.justification}
-          </p>
+      {/* Read-only display */}
+      {readOnly && (
+        <div className="space-y-3 border-t border-gray-200 pt-4">
+          {selectedPosition && (
+            <p className="text-sm font-body text-foreground">
+              📍 Posicion actual:{' '}
+              <span className="font-semibold text-accent">
+                {selectedPosition.id}. {selectedPosition.name}
+              </span>
+            </p>
+          )}
+          {position.justification && (
+            <div className="space-y-1">
+              <p className="text-sm font-heading font-semibold text-foreground">
+                Justificacion:
+              </p>
+              <p className="text-sm font-body text-neutral">
+                {position.justification}
+              </p>
+            </div>
+          )}
+          {position.targetPosition > 0 && (
+            <div className="space-y-1">
+              <p className="text-sm font-heading font-semibold text-foreground">
+                Posicion objetivo:
+              </p>
+              <p className="text-sm font-body text-neutral">
+                {position.targetPosition}.{' '}
+                {POSITIONS.find((p) => p.id === position.targetPosition)?.name ?? ''}
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -142,12 +142,17 @@ export function WorkshopManager({ data, onChange }: WorkshopManagerProps) {
             Fecha del Taller
           </h4>
         </div>
-        <input
-          type="date"
-          value={data.date}
-          onChange={(e) => handleDateChange(e.target.value)}
-          className="px-4 py-2 border border-neutral-light rounded-lg text-foreground font-body text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
-        />
+        <div className="flex flex-col gap-[6px]">
+          <label className="text-sm font-semibold text-[#4A4A4A] font-body">
+            Fecha del taller
+          </label>
+          <input
+            type="date"
+            value={data.date}
+            onChange={(e) => handleDateChange(e.target.value)}
+            className="px-[14px] py-[10px] border-[1.5px] border-neutral-lighter rounded-lg text-sm font-body text-foreground bg-white focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none max-w-xs"
+          />
+        </div>
       </Card>
 
       {/* Agenda */}
@@ -202,19 +207,24 @@ export function WorkshopManager({ data, onChange }: WorkshopManagerProps) {
           </ol>
         )}
 
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newAgendaItem}
-            onChange={(e) => setNewAgendaItem(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleAddAgendaItem() }}
-            placeholder="Nuevo tema de agenda..."
-            className="flex-1 px-3 py-2 border border-neutral-light rounded-lg text-sm font-body text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
-          />
-          <Button variant="outline" size="sm" onClick={handleAddAgendaItem}>
-            <Plus size={16} />
-            Agregar
-          </Button>
+        <div className="flex flex-col gap-[6px]">
+          <label className="text-sm font-semibold text-[#4A4A4A] font-body">
+            Nuevo tema de agenda
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newAgendaItem}
+              onChange={(e) => setNewAgendaItem(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAddAgendaItem() }}
+              placeholder="Nuevo tema de agenda..."
+              className="flex-1 px-[14px] py-[10px] border-[1.5px] border-neutral-lighter rounded-lg text-sm font-body text-foreground bg-white focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none"
+            />
+            <Button variant="outline" size="sm" onClick={handleAddAgendaItem}>
+              <Plus size={16} />
+              Agregar
+            </Button>
+          </div>
         </div>
       </Card>
 
@@ -284,18 +294,23 @@ export function WorkshopManager({ data, onChange }: WorkshopManagerProps) {
                 <span className="flex-1 text-sm font-body text-foreground font-medium">
                   {name}
                 </span>
-                <select
-                  value={data.roles[name] || ''}
-                  onChange={(e) => handleRoleChange(name, e.target.value)}
-                  className="px-2 py-1 text-xs border border-neutral-light rounded-lg bg-white text-foreground font-body focus:outline-none focus:ring-1 focus:ring-accent/30"
-                >
-                  <option value="">Sin rol</option>
-                  {AVAILABLE_ROLES.map((role) => (
-                    <option key={role} value={role}>
-                      {role}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex flex-col gap-[4px]">
+                  <label className="text-xs font-semibold text-[#4A4A4A] font-body">
+                    Rol
+                  </label>
+                  <select
+                    value={data.roles[name] || ''}
+                    onChange={(e) => handleRoleChange(name, e.target.value)}
+                    className="px-[14px] py-[10px] text-sm border-[1.5px] border-neutral-lighter rounded-lg bg-white text-foreground font-body focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none"
+                  >
+                    <option value="">Sin rol</option>
+                    {AVAILABLE_ROLES.map((role) => (
+                      <option key={role} value={role}>
+                        {role}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <button
                   type="button"
                   onClick={() => handleRemoveParticipant(index)}
@@ -309,19 +324,24 @@ export function WorkshopManager({ data, onChange }: WorkshopManagerProps) {
           </div>
         )}
 
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newParticipant}
-            onChange={(e) => setNewParticipant(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleAddParticipant() }}
-            placeholder="Nombre del participante..."
-            className="flex-1 px-3 py-2 border border-neutral-light rounded-lg text-sm font-body text-foreground focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
-          />
-          <Button variant="outline" size="sm" onClick={handleAddParticipant}>
-            <Plus size={16} />
-            Agregar
-          </Button>
+        <div className="flex flex-col gap-[6px]">
+          <label className="text-sm font-semibold text-[#4A4A4A] font-body">
+            Nombre del participante
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newParticipant}
+              onChange={(e) => setNewParticipant(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAddParticipant() }}
+              placeholder="Nombre del participante..."
+              className="flex-1 px-[14px] py-[10px] border-[1.5px] border-neutral-lighter rounded-lg text-sm font-body text-foreground bg-white focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none"
+            />
+            <Button variant="outline" size="sm" onClick={handleAddParticipant}>
+              <Plus size={16} />
+              Agregar
+            </Button>
+          </div>
         </div>
       </Card>
 
@@ -336,12 +356,20 @@ export function WorkshopManager({ data, onChange }: WorkshopManagerProps) {
         <p className="text-sm text-neutral font-body mb-4">
           Registra los acuerdos y compromisos alcanzados durante el taller.
         </p>
-        <textarea
-          value={data.agreements}
-          onChange={(e) => handleAgreementsChange(e.target.value)}
-          placeholder="Registra aquí los acuerdos alcanzados..."
-          className="w-full min-h-[120px] p-4 border border-neutral-light rounded-lg text-foreground font-body text-sm resize-y focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
-        />
+        <div className="flex flex-col gap-[6px]">
+          <label className="text-sm font-semibold text-[#4A4A4A] font-body">
+            Acuerdos alcanzados
+          </label>
+          <textarea
+            value={data.agreements}
+            onChange={(e) => handleAgreementsChange(e.target.value)}
+            placeholder="Registra aquí los acuerdos alcanzados..."
+            className="w-full min-h-[120px] px-[14px] py-[10px] border-[1.5px] border-neutral-lighter rounded-lg text-sm font-body text-foreground bg-white resize-y focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none"
+          />
+          <span className="text-xs text-[#6B6B6B] font-body">
+            Incluye compromisos, responsables y plazos acordados.
+          </span>
+        </div>
       </Card>
 
       {/* Strategic Agreement */}
@@ -355,12 +383,20 @@ export function WorkshopManager({ data, onChange }: WorkshopManagerProps) {
         <p className="text-sm text-neutral font-body mb-4">
           Acuerdo estratégico: ¿A qué se compromete el equipo?
         </p>
-        <textarea
-          value={data.strategicAgreement}
-          onChange={(e) => handleStrategicAgreementChange(e.target.value)}
-          placeholder="Describe el compromiso estratégico del equipo..."
-          className="w-full min-h-[120px] p-4 border border-neutral-light rounded-lg text-foreground font-body text-sm resize-y focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
-        />
+        <div className="flex flex-col gap-[6px]">
+          <label className="text-sm font-semibold text-[#4A4A4A] font-body">
+            Compromiso estratégico del equipo
+          </label>
+          <textarea
+            value={data.strategicAgreement}
+            onChange={(e) => handleStrategicAgreementChange(e.target.value)}
+            placeholder="Describe el compromiso estratégico del equipo..."
+            className="w-full min-h-[120px] px-[14px] py-[10px] border-[1.5px] border-neutral-lighter rounded-lg text-sm font-body text-foreground bg-white resize-y focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none"
+          />
+          <span className="text-xs text-[#6B6B6B] font-body">
+            Define claramente a qué se compromete el equipo como resultado del taller.
+          </span>
+        </div>
       </Card>
     </div>
   )

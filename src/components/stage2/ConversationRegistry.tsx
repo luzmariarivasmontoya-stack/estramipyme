@@ -1,6 +1,6 @@
-import { useState, useRef, useCallback, type ChangeEvent } from 'react'
+import { useState, useRef, useCallback, useEffect, type ChangeEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Trash2, Users, ChevronDown, ChevronUp, Lightbulb } from 'lucide-react'
+import { Plus, Trash2, Users, ChevronDown, ChevronUp, Lightbulb, Check } from 'lucide-react'
 import { Button } from '@/components/common/Button'
 import type { ConversationEntry } from '@/types/stages'
 
@@ -68,29 +68,49 @@ function getTipsType(actor: string): string | null {
   return null
 }
 
+function hasAnyAnswer(entry: ConversationEntry): boolean {
+  return !!(
+    entry.pregunta1.trim() ||
+    entry.pregunta2.trim() ||
+    entry.pregunta3.trim() ||
+    entry.pregunta4.trim()
+  )
+}
+
 interface ConversationRegistryProps {
   conversations: ConversationEntry[]
   onChange: (updated: ConversationEntry[]) => void
 }
 
+/* ─── Auto-resize textarea ─── */
 function AutoResizeTextarea({
   value,
   onChange,
   placeholder,
+  minHeight = 80,
 }: {
   value: string
   onChange: (value: string) => void
   placeholder?: string
+  minHeight?: number
 }) {
   const ref = useRef<HTMLTextAreaElement>(null)
+
+  const resize = useCallback(() => {
+    if (ref.current) {
+      ref.current.style.height = 'auto'
+      const scrollH = ref.current.scrollHeight
+      ref.current.style.height = `${Math.max(scrollH, minHeight)}px`
+    }
+  }, [minHeight])
+
+  useEffect(() => {
+    resize()
+  }, [value, resize])
 
   const handleInput = useCallback(
     (e: ChangeEvent<HTMLTextAreaElement>) => {
       onChange(e.target.value)
-      if (ref.current) {
-        ref.current.style.height = 'auto'
-        ref.current.style.height = `${ref.current.scrollHeight}px`
-      }
     },
     [onChange]
   )
@@ -101,14 +121,17 @@ function AutoResizeTextarea({
       value={value}
       onChange={handleInput}
       placeholder={placeholder}
-      rows={2}
-      className="w-full resize-none bg-transparent border-0 text-sm text-foreground font-body
-        placeholder:text-neutral/50 focus:outline-none focus:ring-1 focus:ring-accent/30
-        rounded p-1.5 transition-colors hover:bg-neutral-lighter/50"
+      rows={3}
+      style={{ minHeight: `${minHeight}px` }}
+      className="w-full resize-none bg-transparent border border-neutral-lighter/60 text-sm
+        text-foreground font-body placeholder:text-neutral/50 focus:outline-none
+        focus:ring-1 focus:ring-accent/30 focus:border-accent rounded-lg p-2
+        transition-colors hover:bg-neutral-lighter/30"
     />
   )
 }
 
+/* ─── Collapsible tips ─── */
 function CollapsibleTips({ actor }: { actor: string }) {
   const [isOpen, setIsOpen] = useState(false)
   const tipsType = getTipsType(actor)
@@ -158,10 +181,131 @@ function CollapsibleTips({ actor }: { actor: string }) {
   )
 }
 
+/* ─── Mobile accordion item ─── */
+function AccordionItem({
+  entry,
+  isExpanded,
+  onToggle,
+  onUpdate,
+  onDelete,
+}: {
+  entry: ConversationEntry
+  isExpanded: boolean
+  onToggle: () => void
+  onUpdate: (field: keyof ConversationEntry, value: string) => void
+  onDelete: () => void
+}) {
+  const answered = hasAnyAnswer(entry)
+
+  return (
+    <div className="border border-neutral-lighter/60 rounded-xl overflow-hidden bg-white">
+      {/* Accordion header */}
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-4 py-3 bg-neutral-lighter/20
+          hover:bg-neutral-lighter/40 transition-colors cursor-pointer"
+      >
+        <div className="flex items-center gap-2">
+          {answered && (
+            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-green-100">
+              <Check size={13} className="text-green-600" />
+            </span>
+          )}
+          <span className="font-heading font-semibold text-sm text-foreground">
+            {entry.actor}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete()
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.stopPropagation()
+                onDelete()
+              }
+            }}
+            className="p-1.5 text-neutral/40 hover:text-red-500 rounded-lg
+              hover:bg-red-50 transition-colors"
+            aria-label={`Eliminar actor ${entry.actor}`}
+          >
+            <Trash2 size={15} />
+          </span>
+          {isExpanded ? (
+            <ChevronUp size={18} className="text-neutral" />
+          ) : (
+            <ChevronDown size={18} className="text-neutral" />
+          )}
+        </div>
+      </button>
+
+      {/* Accordion body */}
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 py-4 space-y-4 border-t border-neutral-lighter/60">
+              {/* Actor name edit */}
+              <div>
+                <label className="block text-xs font-heading font-semibold text-foreground mb-1">
+                  Nombre del actor
+                </label>
+                <input
+                  type="text"
+                  value={entry.actor}
+                  onChange={(e) => onUpdate('actor', e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-neutral-lighter rounded-lg
+                    bg-white text-foreground font-body placeholder:text-neutral/50
+                    focus:outline-none focus:ring-1 focus:ring-accent/30 focus:border-accent"
+                />
+                <CollapsibleTips actor={entry.actor} />
+              </div>
+
+              {/* Questions */}
+              {QUESTION_HEADERS.map((q) => (
+                <div key={q.key}>
+                  <label className="block text-xs font-heading font-semibold text-foreground/80 mb-1.5 leading-snug">
+                    {q.label}
+                  </label>
+                  <AutoResizeTextarea
+                    value={entry[q.key]}
+                    onChange={(val) => onUpdate(q.key, val)}
+                    placeholder="Escribe aquí..."
+                    minHeight={64}
+                  />
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+/* ─── Main component ─── */
 export function ConversationRegistry({ conversations, onChange }: ConversationRegistryProps) {
   const [newActorName, setNewActorName] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const suggestionsRef = useRef<HTMLDivElement>(null)
+
+  // Auto-expand first actor on mobile when conversations change from 0 to some
+  useEffect(() => {
+    if (conversations.length > 0 && expandedId === null) {
+      setExpandedId(conversations[0].id)
+    }
+  }, [conversations, expandedId])
 
   const existingActors = conversations.map((c) => c.actor)
   const availableSuggestions = DEFAULT_ACTORS.filter(
@@ -183,10 +327,15 @@ export function ConversationRegistry({ conversations, onChange }: ConversationRe
     onChange([...conversations, newEntry])
     setNewActorName('')
     setShowSuggestions(false)
+    // Expand the newly added actor on mobile
+    setExpandedId(newEntry.id)
   }
 
   const deleteRow = (id: string) => {
     onChange(conversations.filter((c) => c.id !== id))
+    if (expandedId === id) {
+      setExpandedId(null)
+    }
   }
 
   const updateCell = (
@@ -208,7 +357,7 @@ export function ConversationRegistry({ conversations, onChange }: ConversationRe
     }
   }
 
-  // Empty state
+  // ─── Empty state ───
   if (conversations.length === 0) {
     return (
       <div className="text-center py-12">
@@ -261,76 +410,125 @@ export function ConversationRegistry({ conversations, onChange }: ConversationRe
     )
   }
 
+  // ─── Populated state ───
   return (
     <div className="space-y-4">
-      {/* Table */}
-      <div className="overflow-x-auto -mx-6 px-6">
-        <table className="w-full min-w-[800px] border-collapse">
-          <thead>
-            <tr className="border-b-2 border-neutral-lighter">
-              <th className="text-left py-3 px-3 text-sm font-heading font-semibold text-foreground w-[160px]">
-                Actor
-              </th>
-              {QUESTION_HEADERS.map((q) => (
+
+      {/* ═══ DESKTOP / TABLET TABLE (hidden on mobile) ═══ */}
+      <div className="hidden md:block">
+        <div
+          className="overflow-x-auto border border-neutral-lighter/60 rounded-xl"
+          style={{ scrollbarGutter: 'stable' }}
+        >
+          <table className="w-full border-collapse" style={{ minWidth: '1060px' }}>
+            <thead>
+              <tr className="bg-neutral-lighter/30 border-b-2 border-neutral-lighter">
+                {/* Actor column: sticky on tablet, normal on desktop */}
                 <th
-                  key={q.key}
-                  className="text-left py-3 px-3 text-xs font-heading font-semibold text-foreground"
+                  className="text-left py-3 px-3 text-sm font-heading font-semibold text-foreground
+                    lg:static md:sticky md:left-0 md:z-10 md:bg-neutral-lighter/30"
+                  style={{ width: '140px', minWidth: '140px' }}
                 >
-                  {q.label}
+                  Actor
                 </th>
-              ))}
-              <th className="w-[60px] py-3 px-3 text-center text-sm font-heading font-semibold text-foreground">
-                Acciones
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <AnimatePresence mode="popLayout">
-              {conversations.map((entry) => (
-                <motion.tr
-                  key={entry.id}
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -20, height: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="border-b border-neutral-lighter/60 hover:bg-neutral-lighter/30 transition-colors group"
+                {QUESTION_HEADERS.map((q) => (
+                  <th
+                    key={q.key}
+                    className="text-left py-3 px-3 text-xs font-heading font-semibold text-foreground
+                      border-l border-neutral-lighter/60"
+                    style={{ minWidth: '200px' }}
+                  >
+                    {q.label}
+                  </th>
+                ))}
+                <th
+                  className="py-3 px-3 text-center text-sm font-heading font-semibold text-foreground
+                    border-l border-neutral-lighter/60"
+                  style={{ width: '70px', minWidth: '70px' }}
                 >
-                  <td className="py-2 px-3 align-top">
-                    <AutoResizeTextarea
-                      value={entry.actor}
-                      onChange={(val) => updateCell(entry.id, 'actor', val)}
-                      placeholder="Actor"
-                    />
-                    <CollapsibleTips actor={entry.actor} />
-                  </td>
-                  {QUESTION_HEADERS.map((q) => (
-                    <td key={q.key} className="py-2 px-3 align-top">
-                      <AutoResizeTextarea
-                        value={entry[q.key]}
-                        onChange={(val) => updateCell(entry.id, q.key, val)}
-                        placeholder="Escribe aquí..."
-                      />
-                    </td>
-                  ))}
-                  <td className="py-2 px-3 text-center align-top">
-                    <button
-                      onClick={() => deleteRow(entry.id)}
-                      className="p-1.5 text-neutral/40 hover:text-red-500 rounded-lg
-                        hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100
-                        focus:opacity-100 cursor-pointer"
-                      aria-label={`Eliminar actor ${entry.actor}`}
+                  Acciones
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <AnimatePresence mode="popLayout">
+                {conversations.map((entry) => (
+                  <motion.tr
+                    key={entry.id}
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -20, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="border-b border-neutral-lighter/60 hover:bg-neutral-lighter/20
+                      transition-colors group"
+                  >
+                    {/* Actor cell: sticky on tablet */}
+                    <td
+                      className="py-2 px-3 align-top border-r border-neutral-lighter/60
+                        lg:static md:sticky md:left-0 md:z-10 md:bg-white"
+                      style={{ width: '140px', minWidth: '140px' }}
                     >
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
-                </motion.tr>
-              ))}
-            </AnimatePresence>
-          </tbody>
-        </table>
+                      <AutoResizeTextarea
+                        value={entry.actor}
+                        onChange={(val) => updateCell(entry.id, 'actor', val)}
+                        placeholder="Actor"
+                        minHeight={80}
+                      />
+                      <CollapsibleTips actor={entry.actor} />
+                    </td>
+                    {QUESTION_HEADERS.map((q) => (
+                      <td
+                        key={q.key}
+                        className="py-2 px-3 align-top border-r border-neutral-lighter/60"
+                        style={{ minWidth: '200px' }}
+                      >
+                        <AutoResizeTextarea
+                          value={entry[q.key]}
+                          onChange={(val) => updateCell(entry.id, q.key, val)}
+                          placeholder="Escribe aquí..."
+                          minHeight={80}
+                        />
+                      </td>
+                    ))}
+                    <td
+                      className="py-2 px-3 text-center align-top"
+                      style={{ width: '70px', minWidth: '70px' }}
+                    >
+                      <button
+                        onClick={() => deleteRow(entry.id)}
+                        className="p-1.5 text-neutral/40 hover:text-red-500 rounded-lg
+                          hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100
+                          focus:opacity-100 cursor-pointer"
+                        aria-label={`Eliminar actor ${entry.actor}`}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
+                  </motion.tr>
+                ))}
+              </AnimatePresence>
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Add row controls */}
+      {/* ═══ MOBILE ACCORDION (hidden on tablet/desktop) ═══ */}
+      <div className="md:hidden space-y-3">
+        {conversations.map((entry) => (
+          <AccordionItem
+            key={entry.id}
+            entry={entry}
+            isExpanded={expandedId === entry.id}
+            onToggle={() =>
+              setExpandedId(expandedId === entry.id ? null : entry.id)
+            }
+            onUpdate={(field, value) => updateCell(entry.id, field, value)}
+            onDelete={() => deleteRow(entry.id)}
+          />
+        ))}
+      </div>
+
+      {/* ═══ ADD ROW CONTROLS (shared across all breakpoints) ═══ */}
       <div className="flex items-center gap-2 pt-2">
         <div className="relative flex-1 max-w-xs" ref={suggestionsRef}>
           <input

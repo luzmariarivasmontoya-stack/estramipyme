@@ -11,7 +11,7 @@ export function Card({ children, className = '', hover = false, onClick }: CardP
   return (
     <div
       className={`
-        bg-white rounded-xl shadow-card p-6
+        bg-white rounded-xl shadow-card p-5 md:p-8 border border-neutral-lighter/60
         ${hover ? 'hover:shadow-card-hover transition-shadow duration-200 cursor-pointer' : ''}
         ${className}
       `}

@@ -67,7 +67,7 @@ export const ninosFelicesCompany: Company = {
         substitutesDetail: '',
         notes: '',
       },
-      strategicClock: { segment: 0, angle: 0, justification: '' },
+      strategicClock: { segment: 0, angle: 0, justification: '', targetPosition: 0 },
       principalRiesgo: '',
       principalOportunidad: '',
     },

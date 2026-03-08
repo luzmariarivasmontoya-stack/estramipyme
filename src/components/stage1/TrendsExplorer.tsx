@@ -144,50 +144,62 @@ export function TrendsExplorer({ trends, onTrendsChange }: TrendsExplorerProps) 
                       {isEditing ? (
                         <>
                           <td className="py-3 pr-4">
-                            <input
-                              type="text"
-                              value={editDraft?.name || ''}
-                              onChange={(e) => updateDraft('name', e.target.value)}
-                              placeholder="Nombre de la tendencia..."
-                              className="w-full px-3 py-2 rounded-xl border border-neutral-lighter bg-white
-                                text-foreground font-body text-sm placeholder:text-neutral
-                                focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
-                            />
+                            <div className="flex flex-col gap-[6px]">
+                              <label className="text-sm font-semibold text-[#4A4A4A] font-body">
+                                Tendencia
+                              </label>
+                              <input
+                                type="text"
+                                value={editDraft?.name || ''}
+                                onChange={(e) => updateDraft('name', e.target.value)}
+                                placeholder="Nombre de la tendencia..."
+                                className="w-full px-[14px] py-[10px] border-[1.5px] border-neutral-lighter rounded-lg text-sm font-body text-foreground bg-white focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none"
+                              />
+                            </div>
                           </td>
                           <td className="py-3 pr-4">
-                            <input
-                              type="text"
-                              value={editDraft?.source || ''}
-                              onChange={(e) => updateDraft('source', e.target.value)}
-                              placeholder="Fuente..."
-                              className="w-full px-3 py-2 rounded-xl border border-neutral-lighter bg-white
-                                text-foreground font-body text-sm placeholder:text-neutral
-                                focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
-                            />
+                            <div className="flex flex-col gap-[6px]">
+                              <label className="text-sm font-semibold text-[#4A4A4A] font-body">
+                                Fuente
+                              </label>
+                              <input
+                                type="text"
+                                value={editDraft?.source || ''}
+                                onChange={(e) => updateDraft('source', e.target.value)}
+                                placeholder="Fuente..."
+                                className="w-full px-[14px] py-[10px] border-[1.5px] border-neutral-lighter rounded-lg text-sm font-body text-foreground bg-white focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none"
+                              />
+                            </div>
                           </td>
                           <td className="py-3 pr-4">
-                            <input
-                              type="date"
-                              value={editDraft?.date || ''}
-                              onChange={(e) => updateDraft('date', e.target.value)}
-                              className="w-full px-3 py-2 rounded-xl border border-neutral-lighter bg-white
-                                text-foreground font-body text-sm placeholder:text-neutral
-                                focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
-                            />
+                            <div className="flex flex-col gap-[6px]">
+                              <label className="text-sm font-semibold text-[#4A4A4A] font-body">
+                                Fecha
+                              </label>
+                              <input
+                                type="date"
+                                value={editDraft?.date || ''}
+                                onChange={(e) => updateDraft('date', e.target.value)}
+                                className="w-full px-[14px] py-[10px] border-[1.5px] border-neutral-lighter rounded-lg text-sm font-body text-foreground bg-white focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none"
+                              />
+                            </div>
                           </td>
                           <td className="py-3 pr-4">
-                            <select
-                              value={editDraft?.type || 'oportunidad'}
-                              onChange={(e) =>
-                                updateDraft('type', e.target.value as Trend['type'])
-                              }
-                              className="w-full px-3 py-2 rounded-xl border border-neutral-lighter bg-white
-                                text-foreground font-body text-sm
-                                focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
-                            >
-                              <option value="riesgo">Riesgo</option>
-                              <option value="oportunidad">Oportunidad</option>
-                            </select>
+                            <div className="flex flex-col gap-[6px]">
+                              <label className="text-sm font-semibold text-[#4A4A4A] font-body">
+                                Tipo
+                              </label>
+                              <select
+                                value={editDraft?.type || 'oportunidad'}
+                                onChange={(e) =>
+                                  updateDraft('type', e.target.value as Trend['type'])
+                                }
+                                className="w-full px-[14px] py-[10px] border-[1.5px] border-neutral-lighter rounded-lg text-sm font-body text-foreground bg-white focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none"
+                              >
+                                <option value="riesgo">Riesgo</option>
+                                <option value="oportunidad">Oportunidad</option>
+                              </select>
+                            </div>
                           </td>
                           <td className="py-3">
                             <div className="flex items-center gap-1">

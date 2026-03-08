@@ -275,36 +275,56 @@ export function RoadmapTable({ items, onChange }: RoadmapTableProps) {
 
                 {/* Add item form */}
                 {addingTimeline === key ? (
-                  <div className="mt-3 bg-white rounded-lg border border-neutral-light p-3 space-y-2">
-                    <input
-                      type="text"
-                      value={newAction}
-                      onChange={(e) => setNewAction(e.target.value)}
-                      placeholder="Acción estratégica..."
-                      className="w-full px-2 py-1.5 text-sm border border-neutral-light rounded-lg font-body focus:outline-none focus:ring-1 focus:ring-accent/30"
-                      autoFocus
-                    />
-                    <input
-                      type="text"
-                      value={newResponsible}
-                      onChange={(e) => setNewResponsible(e.target.value)}
-                      placeholder="Responsable..."
-                      className="w-full px-2 py-1.5 text-sm border border-neutral-light rounded-lg font-body focus:outline-none focus:ring-1 focus:ring-accent/30"
-                    />
-                    <input
-                      type="text"
-                      value={newRecursos}
-                      onChange={(e) => setNewRecursos(e.target.value)}
-                      placeholder="Recursos necesarios..."
-                      className="w-full px-2 py-1.5 text-sm border border-neutral-light rounded-lg font-body focus:outline-none focus:ring-1 focus:ring-accent/30"
-                    />
-                    <input
-                      type="text"
-                      value={newIndicador}
-                      onChange={(e) => setNewIndicador(e.target.value)}
-                      placeholder="Indicador de éxito..."
-                      className="w-full px-2 py-1.5 text-sm border border-neutral-light rounded-lg font-body focus:outline-none focus:ring-1 focus:ring-accent/30"
-                    />
+                  <div className="mt-3 bg-white rounded-lg border border-neutral-light p-3 space-y-[20px]">
+                    <div className="flex flex-col gap-[6px]">
+                      <label className="text-sm font-semibold text-[#4A4A4A] font-body">
+                        Acción estratégica
+                      </label>
+                      <input
+                        type="text"
+                        value={newAction}
+                        onChange={(e) => setNewAction(e.target.value)}
+                        placeholder="Acción estratégica..."
+                        className="w-full px-[14px] py-[10px] text-sm border-[1.5px] border-neutral-lighter rounded-lg font-body text-foreground bg-white focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="flex flex-col gap-[6px]">
+                      <label className="text-sm font-semibold text-[#4A4A4A] font-body">
+                        Responsable
+                      </label>
+                      <input
+                        type="text"
+                        value={newResponsible}
+                        onChange={(e) => setNewResponsible(e.target.value)}
+                        placeholder="Responsable..."
+                        className="w-full px-[14px] py-[10px] text-sm border-[1.5px] border-neutral-lighter rounded-lg font-body text-foreground bg-white focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-[6px]">
+                      <label className="text-sm font-semibold text-[#4A4A4A] font-body">
+                        Recursos necesarios
+                      </label>
+                      <input
+                        type="text"
+                        value={newRecursos}
+                        onChange={(e) => setNewRecursos(e.target.value)}
+                        placeholder="Recursos necesarios..."
+                        className="w-full px-[14px] py-[10px] text-sm border-[1.5px] border-neutral-lighter rounded-lg font-body text-foreground bg-white focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-[6px]">
+                      <label className="text-sm font-semibold text-[#4A4A4A] font-body">
+                        Indicador de éxito
+                      </label>
+                      <input
+                        type="text"
+                        value={newIndicador}
+                        onChange={(e) => setNewIndicador(e.target.value)}
+                        placeholder="Indicador de éxito..."
+                        className="w-full px-[14px] py-[10px] text-sm border-[1.5px] border-neutral-lighter rounded-lg font-body text-foreground bg-white focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none"
+                      />
+                    </div>
                     <div className="flex gap-2 justify-end">
                       <button
                         type="button"
@@ -350,71 +370,71 @@ export function RoadmapTable({ items, onChange }: RoadmapTableProps) {
           onClick={() => setEditingItem(null)}
         >
           <div
-            className="bg-white rounded-xl shadow-card p-6 w-full max-w-md mx-4 space-y-4"
+            className="bg-white rounded-xl shadow-card p-6 w-full max-w-md mx-4 space-y-[20px]"
             onClick={(e) => e.stopPropagation()}
           >
             <h4 className="font-heading font-semibold text-foreground">
               Editar Acción
             </h4>
-            <div>
-              <label className="block text-sm font-body text-foreground mb-1">Acción</label>
+            <div className="flex flex-col gap-[6px]">
+              <label className="text-sm font-semibold text-[#4A4A4A] font-body">Acción</label>
               <input
                 type="text"
                 value={editingItem.action}
                 onChange={(e) => setEditingItem({ ...editingItem, action: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-light rounded-lg text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/30"
+                className="w-full px-[14px] py-[10px] border-[1.5px] border-neutral-lighter rounded-lg text-sm font-body text-foreground bg-white focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none"
               />
             </div>
-            <div>
-              <label className="block text-sm font-body text-foreground mb-1">Responsable</label>
+            <div className="flex flex-col gap-[6px]">
+              <label className="text-sm font-semibold text-[#4A4A4A] font-body">Responsable</label>
               <input
                 type="text"
                 value={editingItem.responsible}
                 onChange={(e) => setEditingItem({ ...editingItem, responsible: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-light rounded-lg text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/30"
+                className="w-full px-[14px] py-[10px] border-[1.5px] border-neutral-lighter rounded-lg text-sm font-body text-foreground bg-white focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none"
               />
             </div>
-            <div>
-              <label className="block text-sm font-body text-foreground mb-1">Plazo</label>
+            <div className="flex flex-col gap-[6px]">
+              <label className="text-sm font-semibold text-[#4A4A4A] font-body">Plazo</label>
               <select
                 value={editingItem.timeline}
                 onChange={(e) => setEditingItem({ ...editingItem, timeline: e.target.value as Timeline })}
-                className="w-full px-3 py-2 border border-neutral-light rounded-lg text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/30"
+                className="w-full px-[14px] py-[10px] border-[1.5px] border-neutral-lighter rounded-lg text-sm font-body text-foreground bg-white focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none"
               >
                 <option value="corto">Corto Plazo</option>
                 <option value="mediano">Mediano Plazo</option>
                 <option value="largo">Largo Plazo</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-body text-foreground mb-1">Estado</label>
+            <div className="flex flex-col gap-[6px]">
+              <label className="text-sm font-semibold text-[#4A4A4A] font-body">Estado</label>
               <select
                 value={editingItem.status}
                 onChange={(e) => setEditingItem({ ...editingItem, status: e.target.value as RoadmapItem['status'] })}
-                className="w-full px-3 py-2 border border-neutral-light rounded-lg text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/30"
+                className="w-full px-[14px] py-[10px] border-[1.5px] border-neutral-lighter rounded-lg text-sm font-body text-foreground bg-white focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none"
               >
                 <option value="pendiente">Pendiente</option>
                 <option value="en_progreso">En progreso</option>
                 <option value="completado">Completado</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-body text-foreground mb-1">Recursos necesarios</label>
+            <div className="flex flex-col gap-[6px]">
+              <label className="text-sm font-semibold text-[#4A4A4A] font-body">Recursos necesarios</label>
               <input
                 type="text"
                 value={editingItem.recursosNecesarios}
                 onChange={(e) => setEditingItem({ ...editingItem, recursosNecesarios: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-light rounded-lg text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/30"
+                className="w-full px-[14px] py-[10px] border-[1.5px] border-neutral-lighter rounded-lg text-sm font-body text-foreground bg-white focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none"
                 placeholder="Recursos necesarios..."
               />
             </div>
-            <div>
-              <label className="block text-sm font-body text-foreground mb-1">Indicador de éxito</label>
+            <div className="flex flex-col gap-[6px]">
+              <label className="text-sm font-semibold text-[#4A4A4A] font-body">Indicador de éxito</label>
               <input
                 type="text"
                 value={editingItem.indicadorExito}
                 onChange={(e) => setEditingItem({ ...editingItem, indicadorExito: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-light rounded-lg text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/30"
+                className="w-full px-[14px] py-[10px] border-[1.5px] border-neutral-lighter rounded-lg text-sm font-body text-foreground bg-white focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none"
                 placeholder="Indicador de éxito..."
               />
             </div>

@@ -47,6 +47,7 @@ export const mabekaStage3: Stage3Data = {
     angle: 135,
     justification:
       'Mabeka se ubica en la posicion de diferenciacion porque ofrece muebles artesanales de alta calidad con maderas sostenibles y diseno personalizado, a precios razonables para su segmento objetivo. La propuesta de valor se centra en la artesania, la sostenibilidad y la atencion al detalle, no en competir por precio.',
+    targetPosition: 5,
   },
   principalRiesgo:
     'Nuevas regulaciones ambientales podrian encarecer las materias primas y exigir certificaciones costosas. Ademas, competidores mas grandes pueden implementar tecnologia CNC a gran escala, reduciendo costos que una microempresa no puede igualar.',

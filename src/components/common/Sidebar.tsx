@@ -2,7 +2,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Compass, Users, BarChart3, Puzzle, Lightbulb, Flag,
-  LayoutDashboard, ClipboardList, FileText, ChevronLeft, ChevronRight, Lock, Sparkles, BookOpen,
+  LayoutDashboard, ClipboardList, FileText, ChevronLeft, ChevronRight, Lock, Sparkles, BookOpen, Check,
 } from 'lucide-react'
 import { useContext } from 'react'
 import { AppContext } from '@/context/AppContext'
@@ -24,6 +24,10 @@ export function Sidebar() {
   if (!appContext) return null
   const { sidebarOpen, setSidebarOpen, setUpgradeModalOpen } = appContext
 
+  // Determine current stage from path
+  const stageMatch = location.pathname.match(/\/app\/etapa\/(\d+)/)
+  const currentStageNum = stageMatch ? parseInt(stageMatch[1]) : 0
+
   const navItems = [
     { path: '/app', label: 'Dashboard', icon: LayoutDashboard },
     ...STAGES.map((s) => ({
@@ -38,6 +42,15 @@ export function Sidebar() {
     { path: '/app/reporte', label: 'Reporte', icon: FileText },
   ]
 
+  // Get stage state: 'completed' | 'active' | 'pending' | 'locked'
+  const getStageState = (stageNumber: number | undefined) => {
+    if (!stageNumber) return 'pending'
+    if (!isStageAccessible(stageNumber)) return 'locked'
+    if (stageNumber === currentStageNum) return 'active'
+    if (stageNumber < currentStageNum) return 'completed'
+    return 'pending'
+  }
+
   return (
     <motion.aside
       className="bg-white border-r border-neutral-lighter h-screen sticky top-0 flex flex-col z-20"
@@ -51,7 +64,7 @@ export function Sidebar() {
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
           className="text-neutral hover:text-foreground transition-colors cursor-pointer p-1"
-          aria-label={sidebarOpen ? 'Colapsar menú' : 'Expandir menú'}
+          aria-label={sidebarOpen ? 'Colapsar menu' : 'Expandir menu'}
         >
           {sidebarOpen ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
         </button>
@@ -59,7 +72,7 @@ export function Sidebar() {
 
       {sidebarOpen && currentCompany && (
         <div className="px-4 py-3 border-b border-neutral-lighter">
-          <p className="text-xs text-neutral">Empresa actual</p>
+          <p className="text-xs text-neutral font-body">Empresa actual</p>
           <p className="text-sm font-medium truncate">{currentCompany.name}</p>
         </div>
       )}
@@ -69,6 +82,8 @@ export function Sidebar() {
           const isActive = location.pathname === item.path
           const Icon = item.icon
           const locked = 'locked' in item && item.locked
+          const stageNumber = 'stageNumber' in item ? (item as { stageNumber: number }).stageNumber : undefined
+          const stageState = getStageState(stageNumber)
 
           return (
             <button
@@ -87,9 +102,34 @@ export function Sidebar() {
               `}
               title={sidebarOpen ? undefined : item.label}
             >
-              <Icon size={18} className="shrink-0" />
+              {/* Stage state indicator */}
+              {stageNumber && sidebarOpen ? (
+                <span
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium shrink-0 ${
+                    stageState === 'active'
+                      ? 'bg-accent text-white ring-2 ring-accent/20'
+                      : stageState === 'completed'
+                        ? 'bg-success text-white'
+                        : stageState === 'locked'
+                          ? 'bg-neutral-lighter text-neutral'
+                          : 'border-2 border-neutral-light text-neutral'
+                  }`}
+                >
+                  {stageState === 'completed' ? (
+                    <Check size={12} />
+                  ) : stageState === 'locked' ? (
+                    <Lock size={10} />
+                  ) : stageState === 'active' ? (
+                    <span className="text-[10px]">→</span>
+                  ) : (
+                    <span className="text-[10px]">○</span>
+                  )}
+                </span>
+              ) : (
+                <Icon size={18} className="shrink-0" />
+              )}
               {sidebarOpen && <span className="truncate">{item.label}</span>}
-              {sidebarOpen && locked && <Lock size={14} className="ml-auto text-neutral shrink-0" />}
+              {sidebarOpen && locked && !stageNumber && <Lock size={14} className="ml-auto text-neutral shrink-0" />}
             </button>
           )
         })}

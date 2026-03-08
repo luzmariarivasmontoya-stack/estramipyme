@@ -15,6 +15,8 @@ interface EditState {
   content: string
 }
 
+type TabKey = 'customer' | 'value' | 'full'
+
 // Subtypes per zone
 const ZONE_SUBTYPES: Record<string, string[]> = {
   jobs: ['Funcionales', 'Sociales', 'Emocionales', 'De apoyo'],
@@ -26,7 +28,7 @@ const ZONE_SUBTYPES: Record<string, string[]> = {
 const ZONE_SUBTYPE_LABELS: Record<string, string> = {
   jobs: 'Tipo de tarea',
   pains: 'Criticidad',
-  gains: 'Tipo de alegría',
+  gains: 'Tipo de alegria',
 }
 
 // Badge colors per subtype
@@ -47,11 +49,27 @@ const SUBTYPE_BADGE_COLORS: Record<string, string> = {
   Inesperadas: 'bg-violet-100 text-violet-700',
 }
 
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'customer', label: 'Perfil del cliente' },
+  { key: 'value', label: 'Mapa de valor' },
+  { key: 'full', label: 'Vista completa' },
+]
+
+const HEADER_COLORS: Record<string, string> = {
+  gains: 'bg-green-500',
+  pains: 'bg-red-400',
+  jobs: 'bg-blue-400',
+  'gain-creators': 'bg-green-500',
+  'pain-relievers': 'bg-red-400',
+  products: 'bg-blue-400',
+}
+
 export function ValuePropCanvas({ notes, onChange, readOnly = false }: ValuePropCanvasProps) {
   const [editing, setEditing] = useState<EditState>({ noteId: null, content: '' })
   const [addingZone, setAddingZone] = useState<string | null>(null)
   const [newContent, setNewContent] = useState('')
   const [newSubtype, setNewSubtype] = useState<string>('')
+  const [activeTab, setActiveTab] = useState<TabKey>('customer')
 
   const getNotesForZone = (zoneId: string) =>
     notes.filter((n) => n.zone === zoneId)
@@ -93,7 +111,6 @@ export function ValuePropCanvas({ notes, onChange, readOnly = false }: ValueProp
     )
   }
 
-  // Layout: left side (customer) = circle zones, right side (value) = square zones
   const customerZones = VALUE_PROP_ZONES.filter((z) =>
     ['gains', 'pains', 'jobs'].includes(z.id)
   )
@@ -101,201 +118,270 @@ export function ValuePropCanvas({ notes, onChange, readOnly = false }: ValueProp
     ['gain-creators', 'pain-relievers', 'products'].includes(z.id)
   )
 
-  const renderZone = (zone: typeof VALUE_PROP_ZONES[number]) => {
+  const renderNote = (note: CanvasNote, subtypes: string[] | undefined, subtypeLabel: string | undefined) => (
+    <div
+      key={note.id}
+      className="relative group px-4 py-3 rounded-lg text-sm font-body text-foreground shadow-sm min-w-[120px] min-h-[60px]"
+      style={{ backgroundColor: note.color }}
+    >
+      {editing.noteId === note.id ? (
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={editing.content}
+            onChange={(e) => setEditing({ ...editing, content: e.target.value })}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleEditSave()
+              if (e.key === 'Escape') setEditing({ noteId: null, content: '' })
+            }}
+            className="flex-1 bg-white/70 px-2 py-1 rounded text-sm focus:outline-none"
+            autoFocus
+          />
+          <button
+            type="button"
+            onClick={handleEditSave}
+            className="text-green-600 hover:text-green-800 cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
+            aria-label="Guardar"
+          >
+            <Edit3 size={14} />
+          </button>
+        </div>
+      ) : (
+        <>
+          <span>{note.content}</span>
+          {/* Subtype badge */}
+          {note.subtype && (
+            <span
+              className={`inline-flex items-center gap-0.5 ml-2 px-2 py-0.5 rounded-full text-[11px] font-medium leading-none ${SUBTYPE_BADGE_COLORS[note.subtype] || 'bg-gray-100 text-gray-600'}`}
+            >
+              <Tag size={9} />
+              {note.subtype}
+            </span>
+          )}
+          {!readOnly && (
+            <div className="absolute top-1 right-1 hidden group-hover:flex gap-1 items-center">
+              {/* Subtype selector on hover */}
+              {subtypes && (
+                <select
+                  value={note.subtype || ''}
+                  onChange={(e) => handleSubtypeChange(note.id, e.target.value)}
+                  className="p-1 bg-white/80 rounded text-[11px] cursor-pointer focus:outline-none min-h-[44px]"
+                  aria-label={`Cambiar ${subtypeLabel}`}
+                >
+                  <option value="">Sin tipo</option>
+                  {subtypes.map((st) => (
+                    <option key={st} value={st}>
+                      {st}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <button
+                type="button"
+                onClick={() => setEditing({ noteId: note.id, content: note.content })}
+                className="p-1.5 bg-white/60 rounded hover:bg-white cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
+                aria-label="Editar nota"
+              >
+                <Edit3 size={12} />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteNote(note.id)}
+                className="p-1.5 bg-white/60 rounded hover:bg-red-100 cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
+                aria-label="Eliminar nota"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+
+  const renderAddNoteArea = (zone: typeof VALUE_PROP_ZONES[number]) => {
+    const subtypes = ZONE_SUBTYPES[zone.id]
+    const subtypeLabel = ZONE_SUBTYPE_LABELS[zone.id]
+
+    if (readOnly) return null
+
+    if (addingZone === zone.id) {
+      return (
+        <div className="space-y-3 p-4 bg-neutral-50 rounded-lg">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newContent}
+              onChange={(e) => setNewContent(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleAddNote(zone.id)
+                if (e.key === 'Escape') {
+                  setAddingZone(null)
+                  setNewContent('')
+                  setNewSubtype('')
+                }
+              }}
+              placeholder="Nueva nota..."
+              className="flex-1 px-3 py-2 text-sm border border-neutral-light rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/30 font-body"
+              autoFocus
+            />
+            <button
+              type="button"
+              onClick={() => handleAddNote(zone.id)}
+              className="px-4 py-2 text-sm bg-accent text-white rounded-lg hover:bg-accent-dark cursor-pointer font-body font-medium min-w-[44px] min-h-[44px]"
+            >
+              OK
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAddingZone(null)
+                setNewContent('')
+                setNewSubtype('')
+              }}
+              className="px-3 py-2 text-sm text-neutral border border-neutral-light rounded-lg hover:bg-neutral-100 cursor-pointer min-w-[44px] min-h-[44px]"
+              aria-label="Cancelar"
+            >
+              <X size={14} />
+            </button>
+          </div>
+          {/* Subtype selector for new note */}
+          {subtypes && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-neutral font-body">{subtypeLabel}:</span>
+              <select
+                value={newSubtype}
+                onChange={(e) => setNewSubtype(e.target.value)}
+                className="px-2 py-1.5 text-sm border border-neutral-light rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/30 font-body min-h-[44px]"
+              >
+                <option value="">Sin tipo</option>
+                {subtypes.map((st) => (
+                  <option key={st} value={st}>
+                    {st}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setAddingZone(zone.id)
+          setNewContent('')
+          setNewSubtype('')
+        }}
+        className="flex items-center gap-2 text-sm text-neutral hover:text-accent transition-colors cursor-pointer font-body py-2 min-h-[44px]"
+      >
+        <Plus size={16} />
+        Agregar nota
+      </button>
+    )
+  }
+
+  const renderZoneCard = (zone: typeof VALUE_PROP_ZONES[number]) => {
     const zoneNotes = getNotesForZone(zone.id)
     const subtypes = ZONE_SUBTYPES[zone.id]
     const subtypeLabel = ZONE_SUBTYPE_LABELS[zone.id]
 
-    const headerColors: Record<string, string> = {
-      gains: 'bg-green-500',
-      pains: 'bg-red-400',
-      jobs: 'bg-blue-400',
-      'gain-creators': 'bg-green-500',
-      'pain-relievers': 'bg-red-400',
-      products: 'bg-blue-400',
-    }
-
     return (
       <div
         key={zone.id}
-        className="bg-white rounded-lg border border-neutral-light overflow-hidden flex flex-col min-h-[180px]"
+        className="bg-white rounded-xl border border-neutral-light overflow-hidden flex flex-col min-h-[200px] shadow-sm"
       >
         {/* Zone header */}
-        <div className={`${headerColors[zone.id] || 'bg-accent'} px-3 py-2`}>
-          <h5 className="text-white text-sm font-semibold font-body">{zone.label}</h5>
-          <p className="text-white/80 text-xs font-body">{zone.description}</p>
+        <div className={`${HEADER_COLORS[zone.id] || 'bg-accent'} px-4 py-3`}>
+          <h5 className="text-white text-base font-semibold font-body">{zone.label}</h5>
+          <p className="text-white/80 text-sm font-body mt-0.5">{zone.description}</p>
         </div>
 
         {/* Notes area */}
-        <div className="flex-1 p-3 space-y-2">
-          {zoneNotes.map((note) => (
-            <div
-              key={note.id}
-              className="relative group px-3 py-2 rounded-md text-xs font-body text-foreground shadow-sm"
-              style={{ backgroundColor: note.color }}
-            >
-              {editing.noteId === note.id ? (
-                <div className="flex gap-1">
-                  <input
-                    type="text"
-                    value={editing.content}
-                    onChange={(e) => setEditing({ ...editing, content: e.target.value })}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleEditSave()
-                      if (e.key === 'Escape') setEditing({ noteId: null, content: '' })
-                    }}
-                    className="flex-1 bg-white/70 px-1 py-0.5 rounded text-xs focus:outline-none"
-                    autoFocus
-                  />
-                  <button
-                    type="button"
-                    onClick={handleEditSave}
-                    className="text-green-600 hover:text-green-800 cursor-pointer"
-                    aria-label="Guardar"
-                  >
-                    <Edit3 size={12} />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <span>{note.content}</span>
-                  {/* Subtype badge */}
-                  {note.subtype && (
-                    <span
-                      className={`inline-flex items-center gap-0.5 ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium leading-none ${SUBTYPE_BADGE_COLORS[note.subtype] || 'bg-gray-100 text-gray-600'}`}
-                    >
-                      <Tag size={8} />
-                      {note.subtype}
-                    </span>
-                  )}
-                  {!readOnly && (
-                    <div className="absolute top-1 right-1 hidden group-hover:flex gap-1">
-                      {/* Subtype selector on hover */}
-                      {subtypes && (
-                        <select
-                          value={note.subtype || ''}
-                          onChange={(e) => handleSubtypeChange(note.id, e.target.value)}
-                          className="p-0.5 bg-white/80 rounded text-[10px] cursor-pointer focus:outline-none"
-                          aria-label={`Cambiar ${subtypeLabel}`}
-                        >
-                          <option value="">Sin tipo</option>
-                          {subtypes.map((st) => (
-                            <option key={st} value={st}>
-                              {st}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setEditing({ noteId: note.id, content: note.content })}
-                        className="p-0.5 bg-white/60 rounded hover:bg-white cursor-pointer"
-                        aria-label="Editar nota"
-                      >
-                        <Edit3 size={10} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteNote(note.id)}
-                        className="p-0.5 bg-white/60 rounded hover:bg-red-100 cursor-pointer"
-                        aria-label="Eliminar nota"
-                      >
-                        <X size={10} />
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          ))}
-
-          {/* Add note */}
-          {!readOnly && addingZone === zone.id ? (
-            <div className="space-y-2">
-              <div className="flex gap-1">
-                <input
-                  type="text"
-                  value={newContent}
-                  onChange={(e) => setNewContent(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleAddNote(zone.id)
-                    if (e.key === 'Escape') { setAddingZone(null); setNewContent(''); setNewSubtype('') }
-                  }}
-                  placeholder="Nueva nota..."
-                  className="flex-1 px-2 py-1 text-xs border border-neutral-light rounded focus:outline-none focus:ring-1 focus:ring-accent/30"
-                  autoFocus
-                />
-                <button
-                  type="button"
-                  onClick={() => handleAddNote(zone.id)}
-                  className="px-2 py-1 text-xs bg-accent text-white rounded hover:bg-accent-dark cursor-pointer"
-                >
-                  OK
-                </button>
-              </div>
-              {/* Subtype selector for new note */}
-              {subtypes && (
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-neutral font-body">{subtypeLabel}:</span>
-                  <select
-                    value={newSubtype}
-                    onChange={(e) => setNewSubtype(e.target.value)}
-                    className="px-1.5 py-0.5 text-xs border border-neutral-light rounded focus:outline-none focus:ring-1 focus:ring-accent/30"
-                  >
-                    <option value="">Sin tipo</option>
-                    {subtypes.map((st) => (
-                      <option key={st} value={st}>
-                        {st}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-          ) : (
-            !readOnly && (
-              <button
-                type="button"
-                onClick={() => { setAddingZone(zone.id); setNewContent(''); setNewSubtype('') }}
-                className="flex items-center gap-1 text-xs text-neutral hover:text-accent transition-colors cursor-pointer"
-              >
-                <Plus size={12} />
-                Agregar nota
-              </button>
-            )
+        <div className="flex-1 p-4 space-y-3">
+          {zoneNotes.length === 0 && (
+            <p className="text-sm text-neutral/60 font-body italic py-2">
+              No hay notas en esta zona.
+            </p>
           )}
+          {zoneNotes.map((note) => renderNote(note, subtypes, subtypeLabel))}
+
+          {/* Add note button / form */}
+          {renderAddNoteArea(zone)}
         </div>
       </div>
     )
   }
 
+  const renderZoneList = (zones: typeof VALUE_PROP_ZONES) => (
+    <div className="space-y-5">
+      {zones.map(renderZoneCard)}
+    </div>
+  )
+
   return (
     <div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Left side - Customer Profile (Circle) */}
-        <div>
-          <div className="text-center mb-3">
-            <span className="inline-block px-3 py-1 bg-neutral-lighter rounded-full text-sm font-body font-medium text-foreground">
-              Perfil del Cliente
-            </span>
-          </div>
-          <div className="space-y-4">
-            {customerZones.map(renderZone)}
-          </div>
-        </div>
-
-        {/* Right side - Value Map (Square) */}
-        <div>
-          <div className="text-center mb-3">
-            <span className="inline-block px-3 py-1 bg-neutral-lighter rounded-full text-sm font-body font-medium text-foreground">
-              Mapa de Valor
-            </span>
-          </div>
-          <div className="space-y-4">
-            {valueZones.map(renderZone)}
-          </div>
-        </div>
+      {/* Tab bar */}
+      <div className="flex border-b border-neutral-light mb-6">
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setActiveTab(tab.key)}
+            className={`px-4 py-2.5 text-sm font-body font-medium cursor-pointer transition-colors ${
+              activeTab === tab.key
+                ? 'text-accent border-b-2 border-accent'
+                : 'text-neutral hover:text-foreground'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
+
+      {/* Tab content */}
+      {activeTab === 'customer' && renderZoneList(customerZones)}
+
+      {activeTab === 'value' && renderZoneList(valueZones)}
+
+      {activeTab === 'full' && (
+        <>
+          {/* Desktop: 2-column grid */}
+          <div className="hidden md:grid md:grid-cols-2 gap-6">
+            <div>
+              <div className="text-center mb-4">
+                <span className="inline-block px-3 py-1 bg-neutral-100 rounded-full text-sm font-body font-medium text-foreground">
+                  Perfil del Cliente
+                </span>
+              </div>
+              <div className="space-y-5">
+                {customerZones.map(renderZoneCard)}
+              </div>
+            </div>
+            <div>
+              <div className="text-center mb-4">
+                <span className="inline-block px-3 py-1 bg-neutral-100 rounded-full text-sm font-body font-medium text-foreground">
+                  Mapa de Valor
+                </span>
+              </div>
+              <div className="space-y-5">
+                {valueZones.map(renderZoneCard)}
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile: informational message */}
+          <div className="block md:hidden">
+            <div className="bg-neutral-50 border border-neutral-light rounded-xl p-6 text-center">
+              <p className="text-sm text-neutral font-body leading-relaxed">
+                Para ver la vista completa, usa una pantalla mas grande o selecciona las pestanas individuales.
+              </p>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

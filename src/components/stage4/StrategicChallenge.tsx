@@ -139,24 +139,36 @@ export function StrategicChallenge({
                       <span className="font-medium text-foreground">{label}</span>
                     </td>
                     <td className="py-3 px-3">
-                      <input
-                        type="text"
-                        value={entry?.riesgo ?? ''}
-                        onChange={(e) => handleConclusionChange(id, 'riesgo', e.target.value)}
-                        placeholder="Describe el riesgo..."
-                        className="w-full px-3 py-2 border border-neutral-light rounded-lg text-foreground font-body text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
-                      />
+                      <div className="flex flex-col gap-[6px]">
+                        <label className="text-sm font-semibold text-[#4A4A4A] font-body md:hidden">
+                          Riesgo
+                        </label>
+                        <input
+                          type="text"
+                          value={entry?.riesgo ?? ''}
+                          onChange={(e) => handleConclusionChange(id, 'riesgo', e.target.value)}
+                          placeholder="Describe el riesgo..."
+                          aria-label={`Riesgo de ${label}`}
+                          className="w-full px-[14px] py-[10px] border-[1.5px] border-neutral-lighter rounded-lg text-sm font-body text-foreground bg-white focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none"
+                        />
+                      </div>
                     </td>
                     <td className="py-3 px-3">
-                      <input
-                        type="text"
-                        value={entry?.oportunidad ?? ''}
-                        onChange={(e) =>
-                          handleConclusionChange(id, 'oportunidad', e.target.value)
-                        }
-                        placeholder="Describe la oportunidad..."
-                        className="w-full px-3 py-2 border border-neutral-light rounded-lg text-foreground font-body text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
-                      />
+                      <div className="flex flex-col gap-[6px]">
+                        <label className="text-sm font-semibold text-[#4A4A4A] font-body md:hidden">
+                          Oportunidad
+                        </label>
+                        <input
+                          type="text"
+                          value={entry?.oportunidad ?? ''}
+                          onChange={(e) =>
+                            handleConclusionChange(id, 'oportunidad', e.target.value)
+                          }
+                          placeholder="Describe la oportunidad..."
+                          aria-label={`Oportunidad de ${label}`}
+                          className="w-full px-[14px] py-[10px] border-[1.5px] border-neutral-lighter rounded-lg text-sm font-body text-foreground bg-white focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none"
+                        />
+                      </div>
                     </td>
                   </tr>
                 )
@@ -176,24 +188,32 @@ export function StrategicChallenge({
           Dorado), define el reto estrategico principal de tu empresa. ¿Cual es el
           desafio mas importante que debes superar para alcanzar tu vision?
         </p>
-        <textarea
-          value={value}
-          onChange={(e) => {
-            if (e.target.value.length <= MAX_CHARS) {
-              onChange(e.target.value)
-            }
-          }}
-          placeholder="Describa el reto estratégico principal de su empresa..."
-          className="w-full min-h-[180px] p-4 border border-neutral-light rounded-lg text-foreground font-body text-sm resize-y focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent leading-relaxed"
-        />
-        <div className="flex justify-end mt-2">
-          <span
-            className={`text-xs font-body ${
-              charCount > MAX_CHARS * 0.9 ? 'text-accent' : 'text-neutral'
-            }`}
-          >
-            {charCount} / {MAX_CHARS}
-          </span>
+        <div className="flex flex-col gap-[6px]">
+          <label className="text-sm font-semibold text-[#4A4A4A] font-body">
+            Reto estratégico principal
+          </label>
+          <textarea
+            value={value}
+            onChange={(e) => {
+              if (e.target.value.length <= MAX_CHARS) {
+                onChange(e.target.value)
+              }
+            }}
+            placeholder="Describa el reto estratégico principal de su empresa..."
+            className="w-full min-h-[180px] px-[14px] py-[10px] border-[1.5px] border-neutral-lighter rounded-lg text-sm font-body text-foreground bg-white resize-y focus:border-accent focus:ring-[3px] focus:ring-accent/12 focus:outline-none leading-relaxed"
+          />
+          <div className="flex justify-between">
+            <span className="text-xs text-[#6B6B6B] font-body">
+              Define el desafío más importante que debe superar tu empresa.
+            </span>
+            <span
+              className={`text-xs font-body ${
+                charCount > MAX_CHARS * 0.9 ? 'text-accent' : 'text-neutral'
+              }`}
+            >
+              {charCount} / {MAX_CHARS}
+            </span>
+          </div>
         </div>
 
         {/* Validation checklist */}

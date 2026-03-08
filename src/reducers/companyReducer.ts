@@ -62,7 +62,7 @@ export function createEmptyCompany(ownerId: string, data: Partial<Company>): Com
       stage3: {
         megatrends: [],
         industry: { rivalry: 0, newEntrants: 0, substitutes: 0, buyerPower: 0, supplierPower: 0, competitorsDetail: '', newEntrantsDetail: '', substitutesDetail: '', notes: '' },
-        strategicClock: { segment: 0, angle: 0, justification: '' },
+        strategicClock: { segment: 0, angle: 0, justification: '', targetPosition: 0 },
         principalRiesgo: '',
         principalOportunidad: '',
       },

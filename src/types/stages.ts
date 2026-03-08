@@ -72,6 +72,7 @@ export interface StrategicClockPosition {
   segment: number
   angle: number
   justification: string
+  targetPosition: number
 }
 
 export interface Stage3Data {
