@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(export PATH=\"/usr/local/bin:/opt/homebrew/bin:$PATH\")",
+      "Bash(python3 -c \"import PyPDF2; print\\(''available''\\)\")",
+      "Bash(python3 -c \"import pypdf; print\\(''available''\\)\")",
+      "Bash(npx tsc --noEmit)",
+      "Bash(node -e \"const l = require\\(''lucide-react''\\); console.log\\(''Lightbulb:'', !!l.Lightbulb\\); console.log\\(''ChevronUp:'', !!l.ChevronUp\\); console.log\\(''ChevronDown:'', !!l.ChevronDown\\);\")",
+      "Bash(npx tsc --noEmit --pretty)",
+      "Bash(npx vite build)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(git init)",
+      "Bash(git branch -M main)",
+      "Bash(git add -A)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
